@@ -1,0 +1,42 @@
+{
+  "layers": 28,
+  "d_model": 4096,
+  "n_heads": 16,
+  "n_vocab": 50400,
+  "norm": "layernorm",
+  "pe": "rotary",
+  "pe_rotary_dims": 64,
+
+  "seq": 2048,
+  "cores_per_replica": 8,
+  "per_replica_batch": 1,
+  "gradient_accumulation_steps": 64,
+
+  "step_shift": 383500,
+  "warmup_steps": 50,
+  "anneal_steps": 5045,
+  "lr": 5e-5,
+  "end_lr": 1.5e-6,
+  "weight_decay": 0.1,
+  "total_steps": 388595,
+
+  "tpu_size": 8,
+
+  "bucket": "nost_ar_work",
+  "model_dir": "arj_v0",
+
+  "train_set": "tumblr_corpus.train.index",
+  "val_set": {
+    "tumblr_corpus_val": "tumblr_corpus.val.index",
+  },
+
+  "eval_harness_tasks": [],
+
+  "val_batches": 33,
+  "val_every": 500,
+  "ckpt_every": 50,
+  "keep_every": 50,
+
+  "name": "arj_v0",
+  "comment": ""
+}
