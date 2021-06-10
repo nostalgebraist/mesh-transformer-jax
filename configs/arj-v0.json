@@ -27,7 +27,7 @@
 
   "train_set": "tumblr_corpus.train.index",
   "val_set": {
-    "tumblr_corpus_val": "tumblr_corpus.val.index",
+    "tumblr_corpus_val": "tumblr_corpus.val.index"
   },
 
   "eval_harness_tasks": [],
