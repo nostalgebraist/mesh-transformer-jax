@@ -22,7 +22,7 @@
   "tpu_size": 8,
 
   "bucket": "nost-arj",
-  "model_dir": "gpt-j/arj_v0/",
+  "model_dir": "gpt-j/arj_v0",
 
   "train_set": "tumblr_corpus.train.index",
   "val_set": {
