@@ -25,7 +25,7 @@ def parse_args():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Config file location")
-    parser.add_argument("--tune-config", type=str, default=None, help="Config file for base model to finetune")
+    parser.add_argument("--tune-model-path", type=str, default=None, help="Base model to finetune")
 
     args = parser.parse_args()
     return args
@@ -117,7 +117,7 @@ def eval_step(network, data):
 
 if __name__ == "__main__":
     args = parse_args()
-    tuning = args.tune_config is not None
+    tuning = args.tune_model_path is not None
     params = json.load(open(args.config))
 
     gradient_accumulation_steps = params.get("gradient_accumulation_steps", 1)
@@ -172,45 +172,29 @@ if __name__ == "__main__":
 
     # pick initial ckpt - based on tuning vs train from scratch
 
-    if tuning:
-        base_params = json.load(open(args.tune_config))
-        initial_ckpt_bucket = base_params["bucket"]
-        initial_ckpt_model_dir = base_params["model_dir"]
-    else:
-        initial_ckpt_bucket = bucket
-        initial_ckpt_model_dir = model_dir
-
-    initial_ckpt_path = f"gs://{initial_ckpt_bucket}/{initial_ckpt_model_dir}"
-    meta_path = f"{initial_ckpt_path}/meta.json"
-
-    ckpt_step = None
-    initial_ckpt_state_path = None
-    meta = None
-    train_loader = None
     step = 0
+    initial_ckpt_state_path = None
+    train_loader = None
 
-    try:
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
+    if tuning:
+        initial_ckpt_state_path = args.tune_model_path
+    else:
+        initial_ckpt_model_dir = model_dir
+        initial_ckpt_path = f"gs://{bucket}/{initial_ckpt_model_dir}"
+        meta_path = f"{initial_ckpt_path}/meta.json"
+
+        try:
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
             ckpt_step = meta["checkpoints"][-1]
             initial_ckpt_state_path = f"{initial_ckpt_path}/step_{ckpt_step}/"
             print(f"state will be restored from checkpoint {ckpt_step}")
 
-            if not tuning:
-                step = ckpt_step
-    except NotFound:
-        if tuning:
-            # load required for tuning
-            msg = f"Couldn't find a checkpoint for config {args.tune_config}."
-            msg += f" This file should exist, but doesn't: {meta_path}"
-            raise ValueError(msg)
-
-        # no checkpoint, start at zero
-        print(f"No checkpoint to load at {initial_ckpt_path}. Training from scratch.")
-
-    if meta and not tuning:
-        aux = meta['aux']
-        train_loader = aux.get("train_loader", None)
+            step = ckpt_step
+            train_loader = meta['aux'].get("train_loader", None)
+        except NotFound:
+            # no checkpoint, start at zero
+            print(f"No checkpoint to load at {initial_ckpt_path}. Training from scratch.")
 
     # set up datasets
 
