@@ -233,13 +233,13 @@ if __name__ == "__main__":
         network.state = network.move_xmap(network.state, np.zeros(local_shards))
 
         start = time.time()
-        train_step(train_dataset.get_samples())
+        train_step(network, train_dataset.get_samples())
         step += 1
         print(f"Train fn compiled in {time.time() - start:.06}s")
 
         start = time.time()
         for val_set in val_sets.values():
-            eval_step(val_set.get_samples())
+            eval_step(network, val_set.get_samples())
             val_set.reset()
         print(f"Eval fn compiled in {time.time() - start:.06}s")
 
@@ -264,7 +264,7 @@ if __name__ == "__main__":
                     for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
                                      desc=f"validation for step {step}, set {name}",
                                      total=val_batches):
-                        val_loss.append(eval_step(i))
+                        val_loss.append(eval_step(network, i))
                     val_set.reset()
 
                     val_loss = np.array(val_loss).mean()
@@ -273,7 +273,7 @@ if __name__ == "__main__":
                     wandb.log({f'val/loss_{name}': float(val_loss)}, step)
 
             start = time.time()
-            loss, last_loss = train_step(train_dataset.get_samples())
+            loss, last_loss = train_step(network, train_dataset.get_samples())
             step += 1
 
             steps_per_sec = 1 / (time.time() - start)
