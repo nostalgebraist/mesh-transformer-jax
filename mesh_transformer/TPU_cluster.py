@@ -166,7 +166,7 @@ class TPUCluster:
         step = int(step[0])
 
         print(f"Checkpoint@step{step} restored in {time.time() - start:.06}s")
-        return step, meta["aux"][str(ckpt_step)]
+        return step, ckpt_step, meta["aux"][str(ckpt_step)]
 
     @func_set_timeout(600)
     def save(self, step, bucket, path, aux=None, init=False, overwrite=False, keep_n=3, delete_old=True):
