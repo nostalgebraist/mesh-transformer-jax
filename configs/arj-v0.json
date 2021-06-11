@@ -36,6 +36,6 @@
   "ckpt_every": 400,
   "keep_every": 1200,
 
-  "name": "arj_v0",
+  "name": "arj-v0",
   "comment": ""
 }
