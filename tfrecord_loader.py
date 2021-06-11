@@ -11,6 +11,10 @@ class TFRecordLoader:
             self.file_idx = restore_state["file_idx"]
             self.file_idx_init = False
             self.used = restore_state["used"]
+
+            unique = set(self.used)
+            last_pass_start_idx = len(self.used) % len(unique)
+            self.used = self.used[-last_pass_start_idx:]
         else:
             self.file_idx = 0
             self.file_idx_init = True
