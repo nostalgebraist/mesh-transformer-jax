@@ -105,8 +105,8 @@ def train_step(network, data):
 
 def eval_step(network, data):
     inputs = {
-        "obs": data[:, :, :-1],
-        "target": data[:, :, 1:],
+        "obs": data[:, :-1],
+        "target": data[:, 1:],
     }
 
     out = network.eval(inputs)
