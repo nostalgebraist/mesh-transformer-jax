@@ -246,42 +246,42 @@ if __name__ == "__main__":
         step += 1
         print(f"Train fn compiled in {time.time() - start:.06}s")
 
-        print('compiling eval fn')
-        start = time.time()
-        for val_set in val_sets.values():
-            eval_step(network, val_set.get_samples())
-            val_set.reset()
-        print(f"Eval fn compiled in {time.time() - start:.06}s")
+        # print('compiling eval fn')
+        # start = time.time()
+        # for val_set in val_sets.values():
+        #     eval_step(network, val_set.get_samples())
+        #     val_set.reset()
+        # print(f"Eval fn compiled in {time.time() - start:.06}s")
 
-        wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
+        # wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
 
         while True:
-            if (step % ckpt_every == 0 and step) or step == total_steps:
-                print(f"saving a checkpoint for step {step}")
-                save(step, bucket, model_dir,
-                     mp=cores_per_replica,
-                     aux={"train_loader": train_dataset.get_state()},
-                     init=(step == 0),
-                     delete_old=True,
-                     )
-
-                if step == total_steps:
-                    print("training completed!")
-                    exit()
-
-            if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
-                for name, val_set in val_sets.items():
-                    val_loss = []
-                    for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
-                                     desc=f"validation for step {step}, set {name}",
-                                     total=val_batches):
-                        val_loss.append(eval_step(network, i))
-                    val_set.reset()
-
-                    val_loss = np.array(val_loss).mean()
-                    print(f"validation loss for step {step}, set {name}: {val_loss}")
-
-                    wandb.log({f'val/loss_{name}': float(val_loss)}, step)
+            # if (step % ckpt_every == 0 and step) or step == total_steps:
+            #     print(f"saving a checkpoint for step {step}")
+            #     save(step, bucket, model_dir,
+            #          mp=cores_per_replica,
+            #          aux={"train_loader": train_dataset.get_state()},
+            #          init=(step == 0),
+            #          delete_old=True,
+            #          )
+            #
+            #     if step == total_steps:
+            #         print("training completed!")
+            #         exit()
+            #
+            # if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
+            #     for name, val_set in val_sets.items():
+            #         val_loss = []
+            #         for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
+            #                          desc=f"validation for step {step}, set {name}",
+            #                          total=val_batches):
+            #             val_loss.append(eval_step(network, i))
+            #         val_set.reset()
+            #
+            #         val_loss = np.array(val_loss).mean()
+            #         print(f"validation loss for step {step}, set {name}: {val_loss}")
+            #
+            #         wandb.log({f'val/loss_{name}': float(val_loss)}, step)
 
             start = time.time()
             loss, last_loss = train_step(network, train_dataset.get_samples())
