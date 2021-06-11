@@ -117,7 +117,6 @@ def eval_step(network, data):
 
 if __name__ == "__main__":
     args = parse_args()
-    tuning = args.tune_model_path is not None
     params = json.load(open(args.config))
 
     gradient_accumulation_steps = params.get("gradient_accumulation_steps", 1)
@@ -176,9 +175,11 @@ if __name__ == "__main__":
     initial_ckpt_state_path = None
     train_loader = None
 
-    if tuning:
+    if args.tune_model_path:
         initial_ckpt_state_path = args.tune_model_path
+        print('we are fine-tuning')
     else:
+        print('we are not fine-tuning')
         initial_ckpt_model_dir = model_dir
         initial_ckpt_path = f"gs://{bucket}/{initial_ckpt_model_dir}"
         meta_path = f"{initial_ckpt_path}/meta.json"
@@ -196,8 +197,13 @@ if __name__ == "__main__":
             # no checkpoint, start at zero
             print(f"No checkpoint to load at {initial_ckpt_path}. Training from scratch.")
 
-    # set up datasets
+    if initial_ckpt_state_path:
+        print(f"path to load checkpoint from: {initial_ckpt_state_path}")
+    else:
+        print("not loading from a checkpoint")
 
+    # set up datasets
+    print("setting up datasets")
     tpu_size = jax.device_count()
 
     train_dataset = TFRecordNewInputs(f"data/{params['train_set']}",
@@ -222,9 +228,11 @@ if __name__ == "__main__":
 
     # load + run
     with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
+        print("initializing network")
         network = CausalTransformer(params)
 
         if initial_ckpt_state_path:
+            print("loading network")
             start = time.time()
             network.state = read_ckpt(network.state, initial_ckpt_state_path, devices.shape[1])
             print(f"network loaded in {time.time() - start:.06}s")
@@ -232,11 +240,13 @@ if __name__ == "__main__":
         local_shards = max(jax.local_device_count() // mesh_shape[1], 1)
         network.state = network.move_xmap(network.state, np.zeros(local_shards))
 
+        print('compiling train fn')
         start = time.time()
         train_step(network, train_dataset.get_samples())
         step += 1
         print(f"Train fn compiled in {time.time() - start:.06}s")
 
+        print('compiling eval fn')
         start = time.time()
         for val_set in val_sets.values():
             eval_step(network, val_set.get_samples())
@@ -247,6 +257,7 @@ if __name__ == "__main__":
 
         while True:
             if (step % ckpt_every == 0 and step) or step == total_steps:
+                print(f"saving a checkpoint for step {step}")
                 save(step, bucket, model_dir,
                      mp=cores_per_replica,
                      aux={"train_loader": train_dataset.get_state()},
