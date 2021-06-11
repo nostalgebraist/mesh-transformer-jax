@@ -73,7 +73,7 @@ if __name__ == "__main__":
     t = build_model(params, tpu_name, region, preemptible)
 
     try:
-        if params.get('step_shift'):
+        if params.get('step_shift') or not clean_start:
             raise ValueError
         t.save(0, bucket, model_dir, init=True, overwrite=clean_start)
         step = 0
