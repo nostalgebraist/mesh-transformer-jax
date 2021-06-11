@@ -165,7 +165,7 @@ class TPUCluster:
         assert (step[0] == step).all()
         step = int(step[0])
 
-        print(f"Checkpoint@step{step} restored in {time.time() - start:.06}s")
+        print(f"Checkpoint@step{step}@ckpt_step{ckpt_step} restored in {time.time() - start:.06}s")
         return step, ckpt_step, meta["aux"][str(ckpt_step)]
 
     @func_set_timeout(600)
