@@ -26,7 +26,7 @@ def build_model(params, tpu_name, region, preemptible):
     assert tpu_size in [8, 32, 128, 256, 512]
 
     create_tpu(tpu_name, region, f"v3-{tpu_size}", preemptible)
-    assert wait_til(tpu_name, region, {'state': 'READY', 'health': 'HEALTHY'})
+    assert wait_til(tpu_name, region, {'state': 'READY'})
 
     conns = get_connection(tpu_name, region)
 
