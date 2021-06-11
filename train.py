@@ -106,6 +106,10 @@ if __name__ == "__main__":
     # use dynamic seq length unless pe is fixed
     adaptor = EvalHarnessAdaptor(t, seq, global_val_batch * 4, shrink=pe != "fixed")
 
+    # tok/sec metrics
+    windows_per_step = gradient_accumulation_steps * (per_replica_batch * tpu_size // cores_per_replica)
+    tokens_per_step = params['seq'] * windows_per_step
+
     start = time.time()
     t.train(train_dataset.get_samples())
     print(f"Train fn compiled in {time.time() - start:.06}s")
@@ -120,8 +124,11 @@ if __name__ == "__main__":
     eval_task_dict = tasks.get_task_dict(eval_tasks)
 
     while True:
+        start = time.time()
         loss, last_loss = t.train(train_dataset.get_samples())
-        wandb.log({'train/loss': loss, 'train/last_loss': last_loss}, step)
+        steps_per_sec = 1 / (time.time() - start)
+        tokens_per_sec = tokens_per_step * steps_per_sec
+        wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec}, step)
 
         if (step % ckpt_every == 0 and step) or step == total_steps:
             t.save(step, bucket, model_dir,
@@ -133,7 +140,7 @@ if __name__ == "__main__":
                 print("training completed!")
                 exit()
 
-        if step % 100 == 0:
+        if step % 10 == 0:
             print(f"step {step} done")
 
         if step % val_every == 0:
