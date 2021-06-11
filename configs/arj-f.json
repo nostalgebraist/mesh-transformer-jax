@@ -33,8 +33,8 @@
   "eval_harness_tasks": [],
 
   "val_batches": 2082,
-  "val_every": 1000,
-  "ckpt_every": 1000,
+  "val_every": 400,
+  "ckpt_every": 200,
   "keep_every": 1000,
 
   "name": "arj_v0",
