@@ -110,11 +110,11 @@ if __name__ == "__main__":
     windows_per_step = gradient_accumulation_steps * (per_replica_batch * tpu_size // cores_per_replica)
     tokens_per_step = params['seq'] * windows_per_step
 
-    # start = time.time()
-    # t.train(train_dataset.get_samples())
-    # step += 1
-    # print(f"Train fn compiled in {time.time() - start:.06}s")
-    #
+    start = time.time()
+    t.train(train_dataset.get_samples())
+    step += 1
+    print(f"Train fn compiled in {time.time() - start:.06}s")
+
     start = time.time()
     for val_set in val_sets.values():
         t.eval(val_set.get_samples())
@@ -125,7 +125,6 @@ if __name__ == "__main__":
 
     eval_task_dict = tasks.get_task_dict(eval_tasks)
 
-    start_step = step
     while True:
         if (step % ckpt_every == 0 and step) or step == total_steps:
             t.save(step, bucket, model_dir,
@@ -140,7 +139,7 @@ if __name__ == "__main__":
         if step % 10 == 0 and step:
             print(f"step {step} done")
 
-        if step % val_every == 0:
+        if step % val_every == 1:
             for name, val_set in val_sets.items():
                 val_loss = []
                 for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
@@ -169,9 +168,6 @@ if __name__ == "__main__":
         start = time.time()
         loss, last_loss = t.train(train_dataset.get_samples())
         step += 1
-
-        if step == start_step + 1:
-            print(f"Train fn compiled in {time.time() - start:.06}s")
 
         steps_per_sec = 1 / (time.time() - start)
         tokens_per_sec = tokens_per_step * steps_per_sec
