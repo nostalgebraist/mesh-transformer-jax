@@ -110,26 +110,23 @@ if __name__ == "__main__":
     windows_per_step = gradient_accumulation_steps * (per_replica_batch * tpu_size // cores_per_replica)
     tokens_per_step = params['seq'] * windows_per_step
 
-    start = time.time()
-    t.train(train_dataset.get_samples())
-    print(f"Train fn compiled in {time.time() - start:.06}s")
-
+    # start = time.time()
+    # t.train(train_dataset.get_samples())
+    # step += 1
+    # print(f"Train fn compiled in {time.time() - start:.06}s")
+    #
     start = time.time()
     for val_set in val_sets.values():
         t.eval(val_set.get_samples())
+        val_set.reset()
     print(f"Eval fn compiled in {time.time() - start:.06}s")
 
     wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
 
     eval_task_dict = tasks.get_task_dict(eval_tasks)
 
+    start_step = step
     while True:
-        start = time.time()
-        loss, last_loss = t.train(train_dataset.get_samples())
-        steps_per_sec = 1 / (time.time() - start)
-        tokens_per_sec = tokens_per_step * steps_per_sec
-        wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec}, step)
-
         if (step % ckpt_every == 0 and step) or step == total_steps:
             t.save(step, bucket, model_dir,
                    aux={"train_loader": train_dataset.get_state()},
@@ -140,7 +137,7 @@ if __name__ == "__main__":
                 print("training completed!")
                 exit()
 
-        if step % 10 == 0:
+        if step % 10 == 0 and step:
             print(f"step {step} done")
 
         if step % val_every == 0:
@@ -150,6 +147,8 @@ if __name__ == "__main__":
                                  desc=f"validation for step {step}, set {name}",
                                  total=val_batches):
                     val_loss.append(t.eval(i))
+                val_set.reset()
+
                 val_loss = np.array(val_loss).mean()
                 print(f"validation loss for step {step}, set {name}: {val_loss}")
 
@@ -166,4 +165,15 @@ if __name__ == "__main__":
             dumped = json.dumps(results, indent=2)
             print(f"step {step} val results: {dumped}")
             wandb.log(flat_results, step)
+
+        start = time.time()
+        loss, last_loss = t.train(train_dataset.get_samples())
         step += 1
+
+        if step == start_step + 1:
+            print(f"Train fn compiled in {time.time() - start:.06}s")
+
+        steps_per_sec = 1 / (time.time() - start)
+        tokens_per_sec = tokens_per_step * steps_per_sec
+
+        wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec}, step)
