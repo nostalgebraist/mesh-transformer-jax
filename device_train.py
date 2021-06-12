@@ -190,6 +190,7 @@ if __name__ == "__main__":
 
             step = ckpt_step
             train_loader = meta['aux'].get("train_loader", None)
+            print(f'train_loader: {train_loader}')
         except NotFound:
             # no checkpoint, start at zero
             print(f"No checkpoint to load at {initial_ckpt_path}. Training from scratch.")
@@ -252,6 +253,7 @@ if __name__ == "__main__":
         while True:
             if (step % ckpt_every == 1) or step == total_steps:
                 print(f"saving a checkpoint for step {step}")
+                print(f"will save the following train loader: {train_dataset.get_state()}")
                 save(network, step, bucket, model_dir,
                      mp=cores_per_replica,
                      aux={"train_loader": train_dataset.get_state()},
