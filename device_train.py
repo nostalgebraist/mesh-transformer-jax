@@ -258,7 +258,7 @@ if __name__ == "__main__":
                 save(network, step, bucket, model_dir,
                      mp=cores_per_replica,
                      aux={"train_loader": train_dataset.get_state()},
-                     init=(step == 0),
+                     init=(step == 1),
                      delete_old=True,
                      )
 
