@@ -33,7 +33,7 @@
 
   "val_batches": 2082,
   "val_every": 400,
-  "ckpt_every": 400,
+  "ckpt_every": 100,
   "keep_every": 1200,
 
   "name": "arj-dt",
