@@ -31,20 +31,17 @@ def parse_args():
     return args
 
 
-def save(network, step, bucket, path, mp, aux=None, init=False, overwrite=False, keep_n=3, delete_old=True):
+def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
     assert path
     client = storage.Client()
 
     if aux is None:
         aux = {}
 
-    if init:
-        # check existing checkpoint folder does not exist, and delete it if it does
-        for blob in client.list_blobs(bucket, prefix=f"{path}/"):
-            assert overwrite
-            assert path in blob.name
-            blob.delete()
-
+    try:
+        with open(f"gs://{bucket}/{path}/meta.json", "r") as f:
+            meta = json.load(f)
+    except:
         # create metadata file
         with open(f"gs://{bucket}/{path}/meta.json", "w") as f:
             json.dump({
@@ -258,7 +255,6 @@ if __name__ == "__main__":
                 save(network, step, bucket, model_dir,
                      mp=cores_per_replica,
                      aux={"train_loader": train_dataset.get_state()},
-                     init=(step == 1),
                      delete_old=True,
                      )
 
