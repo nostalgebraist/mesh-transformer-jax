@@ -11,13 +11,14 @@ from mesh_transformer.checkpoint import read_ckpt, write_ckpt
 from mesh_transformer.transformer_shard import CausalTransformer
 from smart_open import open
 
-from mesh_transformer.util import clip_by_global_norm, to_bf16
+from mesh_transformer.util import clip_by_global_norm, to_bf16, to_f16
 
 
 def parse_args():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Config file location")
+    parser.add_argument("--f16", default=False, action="store_true", help="Convert to float16 (instead of bfloat16)")
 
     args = parser.parse_args()
     return args
