@@ -18,6 +18,7 @@ def parse_args():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Config file location")
+    parser.add_argument("--ckpt-step", type=int, default=-1)
     parser.add_argument("--f16", default=False, action="store_true", help="Convert to float16 (instead of bfloat16)")
 
     args = parser.parse_args()
@@ -55,7 +56,10 @@ if __name__ == "__main__":
     with open(f"gs://{bucket}/{model_dir}/meta.json", "r") as f:
         meta = json.load(f)
 
-    ckpt_step = meta["checkpoints"][-1]
+    if args.ckpt_step > -1:
+        ckpt_step = args.ckpt_step
+    else:
+        ckpt_step = meta["checkpoints"][-1]
     print(f"using checkpoint {ckpt_step}")
 
     with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
