@@ -251,20 +251,7 @@ if __name__ == "__main__":
         wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
 
         while True:
-            if (step % ckpt_every == 1) or step == total_steps:
-                print(f"saving a checkpoint for step {step}")
-                print(f"will save the following train loader: {train_dataset.get_state()}")
-                save(network, step, bucket, model_dir,
-                     mp=cores_per_replica,
-                     aux={"train_loader": train_dataset.get_state()},
-                     delete_old=True,
-                     )
-
-                if step == total_steps:
-                    print("training completed!")
-                    exit()
-
-            if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
+            if (step % val_every == 1) or step == total_steps:  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     val_loss = []
                     for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
@@ -277,6 +264,19 @@ if __name__ == "__main__":
                     print(f"validation loss for step {step}, set {name}: {val_loss}")
 
                     wandb.log({f'val/loss_{name}': float(val_loss)}, step)
+
+            if (step % ckpt_every == 1) or step == total_steps:
+                print(f"saving a checkpoint for step {step}")
+                print(f"will save the following train loader: {train_dataset.get_state()}")
+                save(network, step, bucket, model_dir,
+                     mp=cores_per_replica,
+                     aux={"train_loader": train_dataset.get_state()},
+                     delete_old=True,
+                     )
+
+                if step == total_steps:
+                    print("training completed!")
+                    exit()
 
             start = time.time()
             loss, last_loss = train_step(network, train_dataset.get_samples())
