@@ -27,6 +27,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     params = json.load(open(args.config))
+    convert_fn = to_f16 if args.f16 else to_bf16
 
     cores_per_replica = params["cores_per_replica"]
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
         start = time.time()
         del network.state["opt_state"]
 
-        network.state["params"] = to_bf16(network.state["params"])
+        network.state["params"] = convert_fn(network.state["params"])
         print(f"network converted in {time.time() - start:.06}s")
 
         for i in range(cores_per_replica):
