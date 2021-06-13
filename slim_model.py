@@ -71,6 +71,8 @@ if __name__ == "__main__":
         network.state["params"] = convert_fn(network.state["params"])
         print(f"network converted in {time.time() - start:.06}s")
 
+        suffix = "_slim_f16" if args.f16 else "_slim"
+
         for i in range(cores_per_replica):
-            write_ckpt(network.state, f"gs://{bucket}/{model_dir}_slim/step_{ckpt_step}/", i)
+            write_ckpt(network.state, f"gs://{bucket}/{model_dir}{suffix}/step_{ckpt_step}/", i)
             print(f"written shard {i}")
