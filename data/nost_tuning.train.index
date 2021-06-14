@@ -1,0 +1,4 @@
+gs://nost-arj-us/datasets/Custom/nost_tuning_v10_1_with_quotes_train_tokenized/nost_tuning_v10_1_with_quotes_train_0_0_1000.tfrecords
+gs://nost-arj-us/datasets/Custom/nost_tuning_v10_1_with_quotes_train_tokenized/nost_tuning_v10_1_with_quotes_train_1_0_1000.tfrecords
+gs://nost-arj-us/datasets/Custom/nost_tuning_v10_1_with_quotes_train_tokenized/nost_tuning_v10_1_with_quotes_train_2_900.tfrecords
+gs://nost-arj-us/datasets/Custom/nost_tuning_v10_1_with_quotes_train_tokenized/nost_tuning_v10_1_with_quotes_train_2_934.tfrecords
