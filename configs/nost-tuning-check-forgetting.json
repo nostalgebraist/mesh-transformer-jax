@@ -17,7 +17,7 @@
   "lr": 5e-6,
   "end_lr": 5e-6,
   "weight_decay": 0.1,
-  "total_steps": 144,
+  "total_steps": 289,
 
   "tpu_size": 8,
 
