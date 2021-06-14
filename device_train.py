@@ -220,6 +220,12 @@ if __name__ == "__main__":
                                         batch_size=(global_val_batch,),
                                         sample_size=seq)
 
+    if isinstance(val_batches, int):
+        vb = val_batches
+        val_batches = {k: vb for k in val_sets.keys()}
+
+    print(f"val_batches: {repr(val_batches)}")
+
     # tok/sec metrics
     windows_per_step = gradient_accumulation_steps * (per_replica_batch * tpu_size // cores_per_replica)
     tokens_per_step = params['seq'] * windows_per_step
@@ -253,10 +259,12 @@ if __name__ == "__main__":
         while True:
             if (step % val_every == 1) or step == total_steps:  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
+                    vb = val_batches[name]
+
                     val_loss = []
-                    for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
+                    for i, _ in tqdm(zip(val_set.sample_once(), range(vb)),
                                      desc=f"validation for step {step}, set {name}",
-                                     total=val_batches):
+                                     total=vb):
                         val_loss.append(eval_step(network, i))
                     val_set.reset()
 
