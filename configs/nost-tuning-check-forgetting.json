@@ -1,0 +1,45 @@
+{
+  "layers": 28,
+  "d_model": 4096,
+  "n_heads": 16,
+  "n_vocab": 50400,
+  "norm": "layernorm",
+  "pe": "rotary",
+  "pe_rotary_dims": 64,
+
+  "seq": 2048,
+  "cores_per_replica": 8,
+  "per_replica_batch": 1,
+  "gradient_accumulation_steps": 32,
+
+  "warmup_steps": 18,
+  "anneal_steps": 144,
+  "lr": 5e-6,
+  "end_lr": 5e-6,
+  "weight_decay": 0.1,
+  "total_steps": 144,
+
+  "tpu_size": 8,
+
+  "bucket": "nost-arj-us",
+  "model_dir": "gpt-j/nost-tuning-check-forgetting",
+
+  "train_set": "nost_tuning.train.index",
+  "val_set": {
+          "nost_tuning_val": "nost_tuning.val.index",
+          "tumblr_corpus_val": "tumblr_corpus.val.index"
+  },
+
+  "eval_harness_tasks": [],
+
+  "val_batches": {
+          "nost_tuning_val": 259,
+          "tumblr_corpus_val": 2082
+  },
+  "val_every": 36,
+  "ckpt_every": -1,
+  "keep_every": 1200,
+
+  "name": "nost-tuning-check-forgetting",
+  "comment": ""
+}
