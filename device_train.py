@@ -147,6 +147,9 @@ if __name__ == "__main__":
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
 
+    shuffle_data = params.get("shuffle_data", False)
+    print(f"shuffle_data: {shuffle_data}")
+
     opt = optax.chain(
         optax.scale(1 / gradient_accumulation_steps),
         clip_by_global_norm(1),
@@ -208,7 +211,8 @@ if __name__ == "__main__":
                                           gradient_accumulation_steps,
                                           per_replica_batch * tpu_size // cores_per_replica),
                                       sample_size=params['seq'],
-                                      restore_state=train_loader)
+                                      restore_state=train_loader,
+                                      shuffle_data=shuffle_data)
 
     global_val_batch = per_replica_batch * tpu_size // cores_per_replica
 

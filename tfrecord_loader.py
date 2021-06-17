@@ -6,17 +6,25 @@ import itertools
 
 
 class TFRecordLoader:
-    def __init__(self, index_fname, batch_size, parse_fn, map_fn=None, restore_state=None):
+    def __init__(self, index_fname, batch_size, parse_fn, map_fn=None, restore_state=None, shuffle_data=False):
         if restore_state is not None:
             self.file_idx = restore_state["file_idx"]
             self.file_idx_init = False
             self.used = restore_state["used"]
+            self.shuffle_data = restore_state.get("shuffle_data", False)
+
+            self.n_epochs = 0
+            if self.shuffle_data:
+                self.n_epochs = restore_state['n_epochs']
         else:
             self.file_idx = 0
             self.file_idx_init = True
             self.used = []
+            self.shuffle_data = shuffle_data
 
         self.index = open(index_fname).read().splitlines()
+        self._shuffle_index()
+
         self.clean_index = list(filter(lambda x: x not in self.used, self.index))
         self.bs = batch_size
         # self.seq = sample_size
@@ -29,10 +37,19 @@ class TFRecordLoader:
 
         self.sample_fn = self.sample_once()
 
+    def _shuffle_index(self):
+        if self.shuffle_data:
+            print(f"shuffling files with seed {self.n_epochs}")
+            np.random.seed(self.n_epochs)
+            np.random.shuffle(self.index)
+            print(f'first 5 files: {self.index[:5]}')
+
     def reset(self):
         self.file_idx = 0
         self.file_idx_init = True
         self.used = []
+
+        self._shuffle_index()
 
         self.clean_index = list(filter(lambda x: x not in self.used, self.index))
         self.sample_fn = self.sample_once()
@@ -42,6 +59,11 @@ class TFRecordLoader:
             compression = "ZLIB" if "zstd" in i else ""
 
             file = tf.data.TFRecordDataset(i, compression_type=compression).map(self.parse_fn, num_parallel_calls=tf.data.AUTOTUNE)
+            if self.shuffle_data:
+                file = file.shuffle(10000,
+                                    seed=self.n_epochs,
+                                    reshuffle_each_iteration=False,  # don't think this matters but just in case
+                                    )
             file = file.apply(tf.data.experimental.dense_to_ragged_batch(np.prod(self.bs), drop_remainder=True))
             file = file.prefetch(10)
 
@@ -64,13 +86,16 @@ class TFRecordLoader:
         try:
             return next(self.sample_fn)
         except StopIteration:
+            self.n_epochs += 1
             self.reset()
             return self.get_samples()
 
     def get_state(self):
         return {
             "used": self.used,
-            "file_idx": self.file_idx
+            "file_idx": self.file_idx,
+            "shuffle_data": self.shuffle_data,
+            "n_epochs": self.n_epochs
         }
 
 
