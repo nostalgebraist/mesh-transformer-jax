@@ -100,7 +100,7 @@ class TFRecordLoader:
 
 
 class TFRecordNewInputs(TFRecordLoader):
-    def __init__(self, index_fname, batch_size, sample_size, restore_state=None):
+    def __init__(self, index_fname, batch_size, sample_size, restore_state=None, shuffle_data=False):
         def tf_parse(example_proto):
             features = {
                 "text": tf.io.VarLenFeature(tf.int64)
@@ -109,7 +109,7 @@ class TFRecordNewInputs(TFRecordLoader):
 
             return tf.cast(tf.sparse.to_dense(tf.sparse.reorder(parsed_features["text"])), tf.uint32)
 
-        super().__init__(index_fname, batch_size, tf_parse, restore_state=restore_state)
+        super().__init__(index_fname, batch_size, tf_parse, restore_state=restore_state, shuffle_data=shuffle_data)
 
 
 class TFRecordWIT(TFRecordLoader):
