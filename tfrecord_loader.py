@@ -21,6 +21,7 @@ class TFRecordLoader:
             self.file_idx_init = True
             self.used = []
             self.shuffle_data = shuffle_data
+            self.n_epochs = 0
 
         self.index = open(index_fname).read().splitlines()
         self._shuffle_index()
