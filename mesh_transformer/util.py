@@ -6,12 +6,10 @@ from optax._src.transform import OptState, GradientTransformation, AdditiveWeigh
 def gpt3_schedule(warmup_steps,
                   anneal_steps,
                   peak_lr,
-                  end_lr,
-                  step_shift=0):
+                  end_lr):
     def sch(step):
-        step_ = step - step_shift
-        warmup_pct = jnp.clip(step_, 0, warmup_steps) / warmup_steps
-        anneal_pct = jnp.clip(step_ - warmup_steps, 0, anneal_steps) / anneal_steps
+        warmup_pct = jnp.clip(step, 0, warmup_steps) / warmup_steps
+        anneal_pct = jnp.clip(step - warmup_steps, 0, anneal_steps) / anneal_steps
 
         return warmup_pct * peak_lr - (peak_lr - end_lr) * (1 - jnp.cos(jnp.pi * anneal_pct)) / 2
 
