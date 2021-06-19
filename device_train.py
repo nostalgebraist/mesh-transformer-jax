@@ -242,6 +242,7 @@ if __name__ == "__main__":
             print("loading network")
             start = time.time()
             network.state = read_ckpt(network.state, initial_ckpt_state_path, devices.shape[1])
+            print(network.state["opt_state"])
             print(f"network loaded in {time.time() - start:.06}s")
 
         print('compiling train fn')
