@@ -147,6 +147,7 @@ if __name__ == "__main__":
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
     step_shift = params.get("step_shift", 0)
+    print(f"step_shift: {step_shift}")
 
     shuffle_data = params.get("shuffle_data", False)
     print(f"shuffle_data: {shuffle_data}")
