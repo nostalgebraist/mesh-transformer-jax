@@ -250,9 +250,9 @@ if __name__ == "__main__":
 
             start = time.time()
             network.state = read_ckpt(network.state, initial_ckpt_state_path, devices.shape[1])
-            print(f"loaded sched state: {network.state["opt_state"][-1]}")
+            print(f"loaded sched state: {network.state['opt_state'][-1]}")
             network.state["opt_state"][-1] = init_sched_state
-            print(f"sched state after setting: {network.state["opt_state"][-1]}")
+            print(f"sched state after setting: {network.state['opt_state'][-1]}")
             print(f"network loaded in {time.time() - start:.06}s")
 
         print('compiling train fn')
