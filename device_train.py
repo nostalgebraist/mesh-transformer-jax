@@ -146,6 +146,7 @@ if __name__ == "__main__":
     lr = params["lr"]
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
+    step_shift = params.get("step_shift", 0)
 
     shuffle_data = params.get("shuffle_data", False)
     print(f"shuffle_data: {shuffle_data}")
@@ -156,7 +157,7 @@ if __name__ == "__main__":
         optax.scale_by_adam(),
         additive_weight_decay(weight_decay),
         optax.scale(-1),
-        optax.scale_by_schedule(util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr))
+        optax.scale_by_schedule(util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr, step_shift))
     )
 
     params["optimizer"] = opt
