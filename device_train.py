@@ -174,7 +174,11 @@ if __name__ == "__main__":
     initial_ckpt_state_path = None
     train_loader = None
 
+    fine_tuning = False
+
     if args.tune_model_path:
+        fine_tuning = True
+
         initial_ckpt_state_path = args.tune_model_path
         print('we are fine-tuning')
     else:
@@ -240,9 +244,15 @@ if __name__ == "__main__":
 
         if initial_ckpt_state_path:
             print("loading network")
+            if fine_tuning:
+                init_sched_state = network.state["opt_state"][-1]
+                print(f"init_sched_state: {init_sched_state}")
+
             start = time.time()
             network.state = read_ckpt(network.state, initial_ckpt_state_path, devices.shape[1])
-            print(network.state["opt_state"])
+            print(f"loaded sched state: {network.state["opt_state"][-1]}")
+            network.state["opt_state"][-1] = init_sched_state
+            print(f"sched state after setting: {network.state["opt_state"][-1]}")
             print(f"network loaded in {time.time() - start:.06}s")
 
         print('compiling train fn')
