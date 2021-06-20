@@ -122,15 +122,8 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
     if shards_out is None:
         shards_out = shards_in
 
-    if load_opt:
-        old_flattened, structure = jax.tree_flatten(pytree)
-        structure_with_opt = structure
-    else:
-        _, structure_with_opt = jax.tree_flatten(pytree)
-        old_flattened, structure = jax.tree_flatten({k: v for k, v in pytree.items() if k != "opt_state"})
+    old_flattened, structure = jax.tree_flatten(pytree)
 
-    ixs = list(range(structure_with_opt.num_leaves))
-    lookup_ix = jax.tree_unflatten(structure_with_opt, ixs)
     orig_opt_state = pytree["opt_state"]
 
     # TODO: figure out how to use a process pool here for more speed
@@ -142,9 +135,6 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
         unsharded = []
 
         for ix, (old, *all_shards) in enumerate(zip(old_flattened, *shards)):
-            if (not load_opt) and ix in lookup_ix["opt_state"]:
-                continue
-
             x = np.stack(all_shards)
             # No idea why this is V2...?
             if x.dtype == np.dtype('V2'):
