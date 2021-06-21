@@ -286,10 +286,6 @@ if __name__ == "__main__":
                      delete_old=True,
                      )
 
-                if step == total_steps:
-                    print("training completed!")
-                    exit()
-
             if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     vb = val_batches[name]
@@ -305,6 +301,10 @@ if __name__ == "__main__":
                     print(f"validation loss for step {step}, set {name}: {val_loss}")
 
                     wandb.log({f'val/loss_{name}': float(val_loss)}, step)
+
+            if step == total_steps:
+                print("training completed!")
+                exit()
 
             start = time.time()
             loss, last_loss = train_step(network, train_dataset.get_samples())
