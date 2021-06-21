@@ -292,10 +292,12 @@ if __name__ == "__main__":
 
             if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
+                    vb = val_batches[name]
+
                     val_loss = []
-                    for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
+                    for i, _ in tqdm(zip(val_set.sample_once(), range(vb)),
                                      desc=f"validation for step {step}, set {name}",
-                                     total=val_batches):
+                                     total=vb):
                         val_loss.append(eval_step(network, i))
                     val_set.reset()
 
