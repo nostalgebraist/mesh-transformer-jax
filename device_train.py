@@ -145,6 +145,9 @@ if __name__ == "__main__":
     norm = params["norm"]
 
     val_batches = params["val_batches"]
+    if not isinstance(val_batches, dict):
+        val_batches = {list(params["val_set"].keys())[0]: val_batches}
+        print(f"val_batches: {val_batches}")
     val_every = params["val_every"]
     ckpt_every = params["ckpt_every"]
     keep_every = params["keep_every"]
