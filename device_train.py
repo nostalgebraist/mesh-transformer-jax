@@ -312,6 +312,6 @@ if __name__ == "__main__":
             tokens_per_sec = tokens_per_step * steps_per_sec
 
             sequences_processed = windows_per_step * step
-            tokens_processed = tokens_per_sec * step
+            tokens_processed = tokens_per_step * step
 
             wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
