@@ -4,6 +4,7 @@ import os
 from finetuning_tools.gcs import BucketStructure
 
 
+# TODO: save/load
 class TuningDatasetMetadata:
     def __init__(self,
                  name: str,
