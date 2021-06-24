@@ -162,11 +162,12 @@ if __name__ == "__main__":
     lr = params["lr"]
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
+    beta2 = params.get('beta2', 0.999)
 
     opt = optax.chain(
         optax.scale(1 / gradient_accumulation_steps),
         clip_by_global_norm(1),
-        optax.scale_by_adam(),
+        optax.scale_by_adam(b2=beta2),
         additive_weight_decay(weight_decay),
         optax.scale(-1),
         optax.scale_by_schedule(util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr))
