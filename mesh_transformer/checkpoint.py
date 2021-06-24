@@ -126,25 +126,32 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
 
     original_opt_state = pytree["opt_state"]
 
-    # TODO: figure out how to use a process pool here for more speed
-    with multiprocessing.pool.ThreadPool(shards_in) as p:
-        start = time.time()
-        shards = list((p.imap(read_shard, [f"{dir}shard_{i}/" for i in range(shards_in)])))
-        print(f"read from disk/gcs in {time.time() - start:.06}s")
+    def _read_ckpt(old_flattened, structure):
+        # TODO: figure out how to use a process pool here for more speed
+        with multiprocessing.pool.ThreadPool(shards_in) as p:
+            start = time.time()
+            shards = list((p.imap(read_shard, [f"{dir}shard_{i}/" for i in range(shards_in)])))
+            print(f"read from disk/gcs in {time.time() - start:.06}s")
 
-        unsharded = []
+            unsharded = []
 
-        for old, *all_shards in zip(old_flattened, *shards):
-            x = np.stack(all_shards)
-            # No idea why this is V2...?
-            if x.dtype == np.dtype('V2'):
-                x.dtype = jnp.bfloat16
+            for old, *all_shards in zip(old_flattened, *shards):
+                x = np.stack(all_shards)
+                # No idea why this is V2...?
+                if x.dtype == np.dtype('V2'):
+                    x.dtype = jnp.bfloat16
 
-            if shards_out != shards_in:
-                x = reshard(x, old.shape)
-            unsharded.append(x)
+                if shards_out != shards_in:
+                    x = reshard(x, old.shape)
+                unsharded.append(x)
 
-            assert x.shape == old.shape, f"Incompatible checkpoints {x.shape} vs {old.shape}"
+                assert x.shape == old.shape, f"Incompatible checkpoints {x.shape} vs {old.shape}"
+    try:
+        _read_ckpt(old_flattened, structure)
+    except AssertionError:
+        del pytree['opt_state']
+        old_flattened, structure = jax.tree_flatten(pytree)
+        _read_ckpt(old_flattened, structure)
 
     loaded_pytree = jax.tree_unflatten(structure, unsharded)
 
