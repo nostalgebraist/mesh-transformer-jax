@@ -286,20 +286,6 @@ if __name__ == "__main__":
         eval_task_dict = tasks.get_task_dict(eval_tasks)
 
         while True:
-            if step % val_every == 1:
-                results = evaluator.evaluate(adaptor, eval_task_dict, False, 0, None)
-
-                flat_results = {}
-
-                for task_name, task_res in results["results"].items():
-                    version = results["versions"][task_name]
-                    for metric_name, metric_res in task_res.items():
-                        flat_results[f"{task_name}-v{version}/{metric_name}"] = float(metric_res)
-
-                dumped = json.dumps(results, indent=2)
-                print(f"step {step} val results: {dumped}")
-                wandb.log(flat_results, step)
-
             if (step % ckpt_every == 1) or step == total_steps:
                 print(f"saving a checkpoint for step {step}")
                 save(network, step, bucket, model_dir,
@@ -321,6 +307,19 @@ if __name__ == "__main__":
                     print(f"validation loss for step {step}, set {name}: {val_loss}")
 
                     wandb.log({f'val/loss_{name}': float(val_loss)}, step)
+
+                results = evaluator.evaluate(adaptor, eval_task_dict, False, 0, None)
+
+                flat_results = {}
+
+                for task_name, task_res in results["results"].items():
+                    version = results["versions"][task_name]
+                    for metric_name, metric_res in task_res.items():
+                        flat_results[f"{task_name}-v{version}/{metric_name}"] = float(metric_res)
+
+                dumped = json.dumps(results, indent=2)
+                print(f"step {step} val results: {dumped}")
+                wandb.log(flat_results, step)
 
             if step == total_steps:
                 print("training completed!")
