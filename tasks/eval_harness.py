@@ -72,7 +72,10 @@ class EvalHarnessAdaptor(LM):
         r = self.convert_requests(requests)
         zero_example = process_request(requests[0], self.seq)
 
-        for b in tqdm(sample_batch(r, self.batch, zero_example), desc="LM eval harness", total=len(requests) // self.batch):
+        for b in tqdm(sample_batch(r, self.batch, zero_example),
+                      desc="LM eval harness",
+                      total=len(requests) // self.batch,
+                      mininterval=5):
             if self.shrink:
                 b = shrink_seq(b)
 
