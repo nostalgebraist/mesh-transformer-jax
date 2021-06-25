@@ -20,6 +20,9 @@ from google.cloud.exceptions import NotFound
 
 from mesh_transformer.util import clip_by_global_norm, additive_weight_decay
 
+from lm_eval import evaluator, tasks
+from tasks.eval_harness import EvalHarnessAdaptor, LocalTPUCluster
+
 
 def parse_args():
     # Parse command line arguments
@@ -245,6 +248,9 @@ if __name__ == "__main__":
         print("initializing network")
         network = CausalTransformer(params)
 
+        t = LocalTPUCluster(network)
+        adaptor = EvalHarnessAdaptor(t, seq, global_val_batch * 4, shrink=pe != "fixed")
+
         if initial_ckpt_state_path:
             print("loading network")
             if fine_tuning:
@@ -277,7 +283,23 @@ if __name__ == "__main__":
 
         wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
 
+        eval_task_dict = tasks.get_task_dict(eval_tasks)
+
         while True:
+            if step % val_every == 1:
+                results = evaluator.evaluate(adaptor, eval_task_dict, False, 0, None)
+
+                flat_results = {}
+
+                for task_name, task_res in results["results"].items():
+                    version = results["versions"][task_name]
+                    for metric_name, metric_res in task_res.items():
+                        flat_results[f"{task_name}-v{version}/{metric_name}"] = float(metric_res)
+
+                dumped = json.dumps(results, indent=2)
+                print(f"step {step} val results: {dumped}")
+                wandb.log(flat_results, step)
+
             if (step % ckpt_every == 1) or step == total_steps:
                 print(f"saving a checkpoint for step {step}")
                 save(network, step, bucket, model_dir,
