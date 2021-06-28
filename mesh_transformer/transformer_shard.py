@@ -279,8 +279,9 @@ class CausalTransformer:
         loss, last_loss, grad_norm, self.state = self.train_xmap(self.state, obs, target)
         loss = np.array(loss)
         last_loss = np.array(last_loss)
+        grad_norm = np.array(grad_norm)
         # print(f"iter done in {time.time() - start:.06}s")
-        return loss.mean(), last_loss.mean(), grad_norm
+        return loss.mean(), last_loss.mean(), grad_norm.mean()
 
     def eval(self, sample):
         # print("eval sample", sample["obs"].shape)

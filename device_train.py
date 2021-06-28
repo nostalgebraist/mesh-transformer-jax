@@ -113,7 +113,7 @@ def train_step(network, data):
 
     loss, last_loss, grad_norm = network.train(inputs)
 
-    return np.array(loss).mean(), np.array(last_loss).mean(), grad_norm
+    return np.array(loss).mean(), np.array(last_loss).mean(), np.array(grad_norm).mean()
 
 
 def eval_step(network, data):
