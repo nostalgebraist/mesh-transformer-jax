@@ -9,7 +9,7 @@ from jax.experimental.maps import thread_resources
 
 from mesh_transformer.layers import EmbeddingShard, TransformerLayerShard, RelativePositionEmbs, ProjectionShard, \
     TransformerLayerShardV2
-from mesh_transformer.util import to_f32, to_bf16, shard_axis, unshard_axis
+from mesh_transformer.util import to_f32, to_bf16, shard_axis, unshard_axis, global_norm
 
 
 class CausalTransformerShard(hk.Module):
@@ -153,12 +153,13 @@ class CausalTransformer:
                                                        (ctx, tgt))
 
             grad = jax.lax.pmean(grad, "batch")
+            grad_norm = global_norm(grad)
             updates, new_opt_state = optimizer.update(grad, state["opt_state"], state["params"])
 
-            return to_f32(loss), to_f32(last_loss), {
+            return to_f32(loss), to_f32(last_loss), to_f32(grad_norm), {
                 "params": optax.apply_updates(state["params"], to_f32(updates)),
                 "step": state["step"] + 1,
-                "opt_state": new_opt_state,
+                "opt_state": new_opt_state
             }
 
         def init(key, x):

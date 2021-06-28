@@ -111,9 +111,9 @@ def train_step(network, data):
         "target": data[:, :, 1:],
     }
 
-    loss, last_loss = network.train(inputs)
+    loss, last_loss, grad_norm = network.train(inputs)
 
-    return np.array(loss).mean(), np.array(last_loss).mean()
+    return np.array(loss).mean(), np.array(last_loss).mean(), grad_norm
 
 
 def eval_step(network, data):
@@ -329,7 +329,7 @@ if __name__ == "__main__":
                 exit()
 
             start = time.time()
-            loss, last_loss = train_step(network, train_dataset.get_samples())
+            loss, last_loss, grad_norm = train_step(network, train_dataset.get_samples())
             step += 1
 
             steps_per_sec = 1 / (time.time() - start)
@@ -338,4 +338,4 @@ if __name__ == "__main__":
             sequences_processed = windows_per_step * step
             tokens_processed = tokens_per_step * step
 
-            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
+            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
