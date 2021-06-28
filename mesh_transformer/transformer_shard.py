@@ -276,11 +276,11 @@ class CausalTransformer:
         # assert (sample["obs"][:, 1:] == sample["target"][:, -1])
 
         # start = time.time()
-        loss, last_loss, self.state = self.train_xmap(self.state, obs, target)
+        loss, last_loss, grad_norm, self.state = self.train_xmap(self.state, obs, target)
         loss = np.array(loss)
         last_loss = np.array(last_loss)
         # print(f"iter done in {time.time() - start:.06}s")
-        return loss.mean(), last_loss.mean()
+        return loss.mean(), last_loss.mean(), grad_norm
 
     def eval(self, sample):
         # print("eval sample", sample["obs"].shape)
