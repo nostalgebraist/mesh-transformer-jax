@@ -111,9 +111,9 @@ def train_step(network, data):
         "target": data[:, :, 1:],
     }
 
-    loss, last_loss, grad_norm = network.train(inputs)
+    loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs)
 
-    return np.array(loss).mean(), np.array(last_loss).mean(), np.array(grad_norm).mean()
+    return np.array(loss).mean(), np.array(last_loss).mean(), np.array(grad_norm).mean(), np.array(grad_norm_micro).mean()
 
 
 def eval_step(network, data):
@@ -329,7 +329,7 @@ if __name__ == "__main__":
                 exit()
 
             start = time.time()
-            loss, last_loss, grad_norm = train_step(network, train_dataset.get_samples())
+            loss, last_loss, grad_norm, grad_norm_micro = train_step(network, train_dataset.get_samples())
             step += 1
 
             steps_per_sec = 1 / (time.time() - start)
@@ -338,4 +338,9 @@ if __name__ == "__main__":
             sequences_processed = windows_per_step * step
             tokens_processed = tokens_per_step * step
 
-            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm/gradient_accumulation_steps, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
+            gbsmall = grad_norm_micro**2
+            gbbig = grad_norm**2
+            G_noise = (gradient_accumulation_steps*gbbig - gbsmall)/(gradient_accumulation_steps - 1)
+            S_noise = (gbsmall - gbbig)/(1/gradient_accumulation_steps - 1)
+
+            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm/gradient_accumulation_steps, 'train/G_noise': G_noise, 'train/S_noise': S_noise, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
