@@ -154,7 +154,7 @@ class CausalTransformer:
                 grad, gnorm, (loss, last_loss) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
                                                                     state["params"]),
-                                                       jnp.zeros([]),
+                                                       jnp.zeros((1,)),
                                                        (ctx, tgt))
 
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
