@@ -164,6 +164,7 @@ class CausalTransformer:
             try:
                 print(("grad_norm_micro.shape", grad_norm_micro.shape))
             except:
+                pass
 
             grad = jax.lax.pmean(grad, "batch")
             grad_norm = global_norm(grad)
