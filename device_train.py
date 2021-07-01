@@ -348,7 +348,7 @@ if __name__ == "__main__":
             gbsmall = grad_norm_micro**2
             gbbig = grad_norm_avg**2
             G_noise = (gradient_accumulation_steps*gbbig - gbsmall)/(gradient_accumulation_steps - 1)
-            S_noise = (gbsmall - gbbig)/(1/gradient_accumulation_steps - 1)
+            S_noise = (gbsmall - gbbig)/(1 - 1/gradient_accumulation_steps)
 
             if G_noise_avg is None:
                 G_noise_avg = G_noise
