@@ -145,26 +145,16 @@ class CausalTransformer:
                 return new_grad, (loss, last_loss, gnorm)
 
             if ctx.shape[0] == 1:
-                print("ctx.shape[0] == 1 branch")
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
                 (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0])
                 gnorm = global_norm(grad)
             else:
-                print("ctx.shape[0] != 1 branch")
                 grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
                                                                     state["params"]),
                                                        (ctx, tgt))
 
-            try:
-                print(("gnorm.shape", gnorm.shape))
-            except:
-                pass
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
-            try:
-                print(("grad_norm_micro.shape", grad_norm_micro.shape))
-            except:
-                pass
 
             grad = jax.lax.pmean(grad, "batch")
             grad_norm = global_norm(grad)
