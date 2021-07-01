@@ -134,15 +134,15 @@ class CausalTransformer:
 
             train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
-            def microbatch(old_grad, old_gnorm, batch):
+            def microbatch(old_grad, batch):
                 ctx, tgt = batch
 
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
                 (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt)
 
                 new_grad = jax.tree_multimap(lambda a, b: a + b, old_grad, grad)
-                new_gnorm = old_gnorm + global_norm(grad)
-                return new_grad, new_gnorm, (loss, last_loss)
+                gnorm = global_norm(grad)
+                return new_grad, (loss, last_loss, gnorm)
 
             if ctx.shape[0] == 1:
                 print("ctx.shape[0] == 1 branch")
@@ -151,13 +151,19 @@ class CausalTransformer:
                 gnorm = global_norm(grad)
             else:
                 print("ctx.shape[0] != 1 branch")
-                grad, gnorm, (loss, last_loss) = jax.lax.scan(microbatch,
+                grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
                                                                     state["params"]),
-                                                       jnp.zeros((1,)),
                                                        (ctx, tgt))
 
+            try:
+                print(("gnorm.shape", gnorm.shape))
+            except:
+                pass
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
+            try:
+                print(("grad_norm_micro.shape", grad_norm_micro.shape))
+            except:
 
             grad = jax.lax.pmean(grad, "batch")
             grad_norm = global_norm(grad)
