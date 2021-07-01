@@ -371,7 +371,7 @@ if __name__ == "__main__":
                 noise_scale_stats.update({'noise/G_noise_avg': G_noise_avg, 'noise/S_noise_avg': S_noise_avg,
                  'noise/B_simple': B_simple, })
 
-             wandb_stats = {'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}
+            wandb_stats = {'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}
             wandb_stats.update(noise_scale_stats)
 
             wandb.log(wandb_stats, step)
