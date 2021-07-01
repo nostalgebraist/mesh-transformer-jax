@@ -349,30 +349,29 @@ if __name__ == "__main__":
             gbbig = grad_norm_avg**2
             G_noise = (gradient_accumulation_steps*gbbig - gbsmall)/(gradient_accumulation_steps - 1)
             S_noise = (gbsmall - gbbig)/(1 - 1/gradient_accumulation_steps)
-
-            if G_noise_avg is None:
-                G_noise_avg = G_noise
-            else:
-                G_noise_avg = noise_alpha*G_noise_avg + (1-noise_alpha)*G_noise
-
-            if S_noise_avg is None:
-                S_noise_avg = S_noise
-            else:
-                S_noise_avg = noise_alpha*S_noise_avg + (1-noise_alpha)*S_noise
-
             B_simple_inst = S_noise / G_noise
-            B_simple = S_noise_avg / G_noise_avg
 
-            wandb_stats = {'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}
             noise_scale_stats = {'noise/G_noise': G_noise, 'noise/S_noise': S_noise,
-                                 'noise/G_noise_avg': G_noise_avg, 'noise/S_noise_avg': S_noise_avg,
-                                 'noise/B_simple': B_simple, 'noise/B_simple_inst': B_simple_inst,
+                                 'noise/B_simple_inst': B_simple_inst,
                                  }
-            wandb_stats.update(noise_scale_stats)
 
-            print("noise_scale_stats")
-            print(noise_scale_stats)
-            print("wandb_stats")
-            print(wandb_stats)
+            if step >= 10:
+                if G_noise_avg is None:
+                    G_noise_avg = G_noise
+                else:
+                    G_noise_avg = noise_alpha*G_noise_avg + (1-noise_alpha)*G_noise
+
+                if S_noise_avg is None:
+                    S_noise_avg = S_noise
+                else:
+                    S_noise_avg = noise_alpha*S_noise_avg + (1-noise_alpha)*S_noise
+
+                B_simple = S_noise_avg / G_noise_avg
+
+                noise_scale_stats.update({'noise/G_noise_avg': G_noise_avg, 'noise/S_noise_avg': S_noise_avg,
+                 'noise/B_simple': B_simple, })
+
+             wandb_stats = {'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}
+            wandb_stats.update(noise_scale_stats)
 
             wandb.log(wandb_stats, step)
