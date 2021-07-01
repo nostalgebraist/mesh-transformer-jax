@@ -338,9 +338,10 @@ if __name__ == "__main__":
             sequences_processed = windows_per_step * step
             tokens_processed = tokens_per_step * step
 
+            grad_norm_avg = grad_norm/gradient_accumulation_steps
             gbsmall = grad_norm_micro**2
-            gbbig = grad_norm**2
+            gbbig = grad_norm_avg**2
             G_noise = (gradient_accumulation_steps*gbbig - gbsmall)/(gradient_accumulation_steps - 1)
             S_noise = (gbsmall - gbbig)/(1/gradient_accumulation_steps - 1)
 
-            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm/gradient_accumulation_steps, 'train/G_noise': G_noise, 'train/S_noise': S_noise, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
+            wandb.log({'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'train/G_noise': G_noise, 'train/S_noise': S_noise, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}, step)
