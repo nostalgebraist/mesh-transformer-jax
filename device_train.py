@@ -26,7 +26,8 @@ from tasks.eval_harness import EvalHarnessAdaptor, LocalTPUCluster
 
 def parse_args():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="""
+    parser = argparse.ArgumentParser(
+        description="""
     To use, download the full checkpoint archive, extract and upload to a GCS bucket, and set that as --tune-model-path
     Modify the config file:
         - set `model_dir` to where the checkpoints should be written during training
@@ -38,10 +39,18 @@ def parse_args():
         - use this notebook: https://github.com/EleutherAI/gpt-neo/blob/master/GPTNeo_example_notebook.ipynb
         - after creating .tfrecords files, save their paths to a index file under `data/`, see existing files for examples
     """,
-    formatter_class=argparse.RawTextHelpFormatter)
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     parser.add_argument("--config", type=str, default=None, help="Config file location")
-    parser.add_argument("--tune-model-path", type=str, default=None, help="Base model to finetune")
-    parser.add_argument("--fresh-opt", default=False, action="store_true", help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint")
+    parser.add_argument(
+        "--tune-model-path", type=str, default=None, help="Base model to finetune"
+    )
+    parser.add_argument(
+        "--fresh-opt",
+        default=False,
+        action="store_true",
+        help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint",
+    )
 
     args = parser.parse_args()
     return args
@@ -60,11 +69,7 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
     except:
         # create metadata file
         with open(f"gs://{bucket}/{path}/meta.json", "w") as f:
-            json.dump({
-                "step": 0,
-                "checkpoints": [],
-                "aux": {}
-            }, f)
+            json.dump({"step": 0, "checkpoints": [], "aux": {}}, f)
 
     # do sharded checkpoint writing
     start = time.time()
@@ -91,7 +96,9 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
 
         if delete_old:
             print(f"deleting checkpoint {ckpt_to_delete}")
-            for blob in client.list_blobs(bucket, prefix=f"{path}/step_{ckpt_to_delete}/"):
+            for blob in client.list_blobs(
+                bucket, prefix=f"{path}/step_{ckpt_to_delete}/"
+            ):
                 # print(f"deleting {blob.name}")
                 assert path in blob.name
                 blob.delete()
@@ -113,7 +120,12 @@ def train_step(network, data):
 
     loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs)
 
-    return np.array(loss).mean(), np.array(last_loss).mean(), np.array(grad_norm).mean(), np.array(grad_norm_micro).mean()
+    return (
+        np.array(loss).mean(),
+        np.array(last_loss).mean(),
+        np.array(grad_norm).mean(),
+        np.array(grad_norm_micro).mean(),
+    )
 
 
 def eval_step(network, data):
@@ -162,9 +174,9 @@ if __name__ == "__main__":
     lr = params["lr"]
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
-    grad_clip_norm = params.get('grad_clip_norm', 1)
-    beta1 = params.get('beta1', 0.9)
-    beta2 = params.get('beta2', 0.999)
+    grad_clip_norm = params.get("grad_clip_norm", 1)
+    beta1 = params.get("beta1", 0.9)
+    beta2 = params.get("beta2", 0.999)
 
     opt = optax.chain(
         optax.scale(1 / gradient_accumulation_steps),
@@ -172,7 +184,9 @@ if __name__ == "__main__":
         optax.scale_by_adam(b1=beta1, b2=beta2),
         additive_weight_decay(weight_decay),
         optax.scale(-1),
-        optax.scale_by_schedule(util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr))
+        optax.scale_by_schedule(
+            util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr)
+        ),
     )
 
     params["optimizer"] = opt
@@ -195,11 +209,13 @@ if __name__ == "__main__":
     train_loader = None
 
     if args.tune_model_path:
-        print('`--tune_model_path` passed: we are beginning a fine-tuning run')
+        print("`--tune_model_path` passed: we are beginning a fine-tuning run")
         fine_tuning = True
         initial_ckpt_state_path = args.tune_model_path
     else:
-        print('`--tune_model_path` not passed: we are continuing a fine-tuning run from a checkpoint (or we are not fine-tuning)')
+        print(
+            "`--tune_model_path` not passed: we are continuing a fine-tuning run from a checkpoint (or we are not fine-tuning)"
+        )
         fine_tuning = False
         initial_ckpt_model_dir = model_dir
         initial_ckpt_path = f"gs://{bucket}/{initial_ckpt_model_dir}"
@@ -213,10 +229,12 @@ if __name__ == "__main__":
             print(f"state will be restored from checkpoint {ckpt_step}")
 
             step = ckpt_step
-            train_loader = meta['aux'][str(ckpt_step)].get("train_loader", None)
+            train_loader = meta["aux"][str(ckpt_step)].get("train_loader", None)
         except NotFound:
             # no checkpoint, start at zero
-            print(f"No checkpoint to load at {initial_ckpt_path}. Training from scratch.")
+            print(
+                f"No checkpoint to load at {initial_ckpt_path}. Training from scratch."
+            )
 
     if initial_ckpt_state_path:
         print(f"path to load checkpoint from: {initial_ckpt_state_path}")
@@ -226,28 +244,33 @@ if __name__ == "__main__":
     # set up datasets
     print("setting up datasets")
 
-    train_dataset = TFRecordNewInputs(f"data/{params['train_set']}",
-                                      batch_size=(
-                                          gradient_accumulation_steps,
-                                          per_replica_batch * tpu_size // cores_per_replica),
-                                      sample_size=params['seq'],
-                                      restore_state=train_loader)
+    train_dataset = TFRecordNewInputs(
+        f"data/{params['train_set']}",
+        batch_size=(
+            gradient_accumulation_steps,
+            per_replica_batch * tpu_size // cores_per_replica,
+        ),
+        sample_size=params["seq"],
+        restore_state=train_loader,
+    )
 
     global_val_batch = per_replica_batch * tpu_size // cores_per_replica
 
     val_sets = {}
 
-    for k, v in params['val_set'].items():
-        val_sets[k] = TFRecordNewInputs(f"data/{v}",
-                                        batch_size=(global_val_batch,),
-                                        sample_size=seq)
+    for k, v in params["val_set"].items():
+        val_sets[k] = TFRecordNewInputs(
+            f"data/{v}", batch_size=(global_val_batch,), sample_size=seq
+        )
 
     # tok/sec metrics
-    windows_per_step = gradient_accumulation_steps * (per_replica_batch * tpu_size // cores_per_replica)
-    tokens_per_step = params['seq'] * windows_per_step
+    windows_per_step = gradient_accumulation_steps * (
+        per_replica_batch * tpu_size // cores_per_replica
+    )
+    tokens_per_step = params["seq"] * windows_per_step
 
     # load + run
-    with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
+    with jax.experimental.maps.mesh(devices, ("dp", "mp")):
         print("initializing network")
         network = CausalTransformer(params)
 
@@ -262,7 +285,12 @@ if __name__ == "__main__":
                 init_sched_state = network.state["opt_state"][-1]
 
             start = time.time()
-            network.state = read_ckpt(network.state, initial_ckpt_state_path, devices.shape[1], load_opt=(not args.fresh_opt))
+            network.state = read_ckpt(
+                network.state,
+                initial_ckpt_state_path,
+                devices.shape[1],
+                load_opt=(not args.fresh_opt),
+            )
 
             if fine_tuning:
                 # overwrite the loaded scheduler step with zeros
@@ -271,22 +299,24 @@ if __name__ == "__main__":
 
             print(f"network loaded in {time.time() - start:.06}s")
 
-        print('compiling train fn')
+        print("compiling train fn")
         start = time.time()
-        loss, last_loss, grad_norm, grad_norm_micro = train_step(network, train_dataset.get_samples())
+        loss, last_loss, grad_norm, grad_norm_micro = train_step(
+            network, train_dataset.get_samples()
+        )
         print(("grad_norm", grad_norm))
         print(("grad_norm_micro", grad_norm_micro))
         step += 1
         print(f"Train fn compiled in {time.time() - start:.06}s")
 
-        print('compiling eval fn')
+        print("compiling eval fn")
         start = time.time()
         for val_set in val_sets.values():
             eval_step(network, val_set.get_samples())
             val_set.reset()
         print(f"Eval fn compiled in {time.time() - start:.06}s")
 
-        wandb.init(project='mesh-transformer-jax', name=params["name"], config=params)
+        wandb.init(project="mesh-transformer-jax", name=params["name"], config=params)
 
         eval_task_dict = tasks.get_task_dict(eval_tasks)
 
@@ -297,25 +327,33 @@ if __name__ == "__main__":
         while True:
             if (step % ckpt_every == 1) or step == total_steps:
                 print(f"saving a checkpoint for step {step}")
-                save(network, step, bucket, model_dir,
-                     mp=cores_per_replica,
-                     aux={"train_loader": train_dataset.get_state()},
-                     delete_old=True,
-                     )
+                save(
+                    network,
+                    step,
+                    bucket,
+                    model_dir,
+                    mp=cores_per_replica,
+                    aux={"train_loader": train_dataset.get_state()},
+                    delete_old=True,
+                )
 
-            if step % val_every == 1:  # 1 because we've already taken a step to compile train fn
+            if (
+                step % val_every == 1
+            ):  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     val_loss = []
-                    for i, _ in tqdm(zip(val_set.sample_once(), range(val_batches)),
-                                     desc=f"validation for step {step}, set {name}",
-                                     total=val_batches):
+                    for i, _ in tqdm(
+                        zip(val_set.sample_once(), range(val_batches)),
+                        desc=f"validation for step {step}, set {name}",
+                        total=val_batches,
+                    ):
                         val_loss.append(eval_step(network, i))
                     val_set.reset()
 
                     val_loss = np.array(val_loss).mean()
                     print(f"validation loss for step {step}, set {name}: {val_loss}")
 
-                    wandb.log({f'val/loss_{name}': float(val_loss)}, step)
+                    wandb.log({f"val/loss_{name}": float(val_loss)}, step)
 
                 results = evaluator.evaluate(adaptor, eval_task_dict, False, 0, None)
 
@@ -324,7 +362,9 @@ if __name__ == "__main__":
                 for task_name, task_res in results["results"].items():
                     version = results["versions"][task_name]
                     for metric_name, metric_res in task_res.items():
-                        flat_results[f"{task_name}-v{version}/{metric_name}"] = float(metric_res)
+                        flat_results[f"{task_name}-v{version}/{metric_name}"] = float(
+                            metric_res
+                        )
 
                 dumped = json.dumps(results, indent=2)
                 print(f"step {step} val results: {dumped}")
@@ -335,7 +375,9 @@ if __name__ == "__main__":
                 exit()
 
             start = time.time()
-            loss, last_loss, grad_norm, grad_norm_micro = train_step(network, train_dataset.get_samples())
+            loss, last_loss, grad_norm, grad_norm_micro = train_step(
+                network, train_dataset.get_samples()
+            )
             step += 1
 
             steps_per_sec = 1 / (time.time() - start)
@@ -344,34 +386,54 @@ if __name__ == "__main__":
             sequences_processed = windows_per_step * step
             tokens_processed = tokens_per_step * step
 
-            grad_norm_avg = grad_norm/gradient_accumulation_steps
-            gbsmall = grad_norm_micro**2
-            gbbig = grad_norm_avg**2
-            G_noise = (gradient_accumulation_steps*gbbig - gbsmall)/(gradient_accumulation_steps - 1)
-            S_noise = (gbsmall - gbbig)/(1 - 1/gradient_accumulation_steps)
+            grad_norm_avg = grad_norm / gradient_accumulation_steps
+            gbsmall = grad_norm_micro ** 2
+            gbbig = grad_norm_avg ** 2
+            G_noise = (gradient_accumulation_steps * gbbig - gbsmall) / (
+                gradient_accumulation_steps - 1
+            )
+            S_noise = (gbsmall - gbbig) / (1 - 1 / gradient_accumulation_steps)
             B_simple_inst = S_noise / G_noise
 
-            noise_scale_stats = {'noise/G_noise': G_noise, 'noise/S_noise': S_noise,
-                                 'noise/B_simple_inst': B_simple_inst,
-                                 }
+            noise_scale_stats = {
+                "noise/G_noise": G_noise,
+                "noise/S_noise": S_noise,
+                "noise/B_simple_inst": B_simple_inst,
+            }
 
-            if step >= 10:
+            use_step_in_noise_avgs = gbbig < 1
+
+            if use_step_in_noise_avgs:
                 if G_noise_avg is None:
                     G_noise_avg = G_noise
                 else:
-                    G_noise_avg = noise_alpha*G_noise_avg + (1-noise_alpha)*G_noise
+                    G_noise_avg = noise_alpha * G_noise_avg + (1 - noise_alpha) * G_noise
 
                 if S_noise_avg is None:
                     S_noise_avg = S_noise
                 else:
-                    S_noise_avg = noise_alpha*S_noise_avg + (1-noise_alpha)*S_noise
+                    S_noise_avg = noise_alpha * S_noise_avg + (1 - noise_alpha) * S_noise
 
                 B_simple = S_noise_avg / G_noise_avg
 
-                noise_scale_stats.update({'noise/G_noise_avg': G_noise_avg, 'noise/S_noise_avg': S_noise_avg,
-                 'noise/B_simple': B_simple, })
+                noise_scale_stats.update(
+                    {
+                        "noise/G_noise_avg": G_noise_avg,
+                        "noise/S_noise_avg": S_noise_avg,
+                        "noise/B_simple": B_simple,
+                    }
+                )
 
-            wandb_stats = {'train/loss': loss, 'train/last_loss': last_loss, 'train/steps_per_sec': steps_per_sec, 'train/tokens_per_sec': tokens_per_sec, 'train/grad_norm': grad_norm, 'train/grad_norm_avg': grad_norm_avg, 'sequences_processed': sequences_processed, 'tokens_processed': tokens_processed}
+            wandb_stats = {
+                "train/loss": loss,
+                "train/last_loss": last_loss,
+                "train/steps_per_sec": steps_per_sec,
+                "train/tokens_per_sec": tokens_per_sec,
+                "train/grad_norm": grad_norm,
+                "train/grad_norm_avg": grad_norm_avg,
+                "sequences_processed": sequences_processed,
+                "tokens_processed": tokens_processed,
+            }
             wandb_stats.update(noise_scale_stats)
 
             wandb.log(wandb_stats, step)
