@@ -401,7 +401,7 @@ if __name__ == "__main__":
                 "noise/B_simple_inst": B_simple_inst,
             }
 
-            use_step_in_noise_avgs = gbbig < 1
+            use_step_in_noise_avgs = gbbig < 2
 
             if use_step_in_noise_avgs:
                 if G_noise_avg is None:
