@@ -346,7 +346,7 @@ if __name__ == "__main__":
 
             if (
                 step % _val_every == 1
-            ):  # 1 because we've already taken a step to compile train fn
+            ) or (step == total_steps):  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     val_loss = []
                     for i, _ in tqdm(
