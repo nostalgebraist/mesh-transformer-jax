@@ -166,6 +166,9 @@ if __name__ == "__main__":
     eval_tasks = params["eval_harness_tasks"]
     total_steps = params["total_steps"]
 
+    val_every_fast = params.get('val_every_fast')
+    val_fast_start = params.get('val_fast_start')
+
     pe = params["pe"]
     assert pe in ["fixed", "rotary", "t5"]
 
@@ -337,8 +340,12 @@ if __name__ == "__main__":
                     delete_old=True,
                 )
 
+            _val_every = val_every
+            if val_fast_start and val_every_fast and (step > val_fast_start):
+                _val_every = val_every_fast
+
             if (
-                step % val_every == 1
+                step % _val_every == 1
             ):  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     val_loss = []
