@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
         while True:
             if args.sample_every and (step % args.sample_every == 1):
-                tokens = ['<|endoftext|>']
+                tokens = tokenizer.encode('<|endoftext|>')
 
                 start = time.time()
 
