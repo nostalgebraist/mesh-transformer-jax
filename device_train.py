@@ -53,7 +53,7 @@ def parse_args():
         action="store_true",
         help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint",
     )
-    parser.add_argument("--sample-every", dtype=int, default=0)
+    parser.add_argument("--sample-every", type=int, default=0)
 
     args = parser.parse_args()
     return args
