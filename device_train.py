@@ -8,10 +8,12 @@ import optax
 
 import wandb
 from tqdm import tqdm
+import transformers
 
 
 from mesh_transformer import util
 from mesh_transformer.checkpoint import read_ckpt, write_ckpt
+from mesh_transformer.sampling import nucleaus_sample
 from mesh_transformer.transformer_shard import CausalTransformer
 from tfrecord_loader import TFRecordNewInputs
 from smart_open import open
@@ -51,6 +53,7 @@ def parse_args():
         action="store_true",
         help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint",
     )
+    parser.add_argument("--sample-every", dtype=int, default=0)
 
     args = parser.parse_args()
     return args
@@ -180,6 +183,9 @@ if __name__ == "__main__":
     grad_clip_norm = params.get("grad_clip_norm", 1)
     beta1 = params.get("beta1", 0.9)
     beta2 = params.get("beta2", 0.999)
+
+    params["sampler"] = nucleaus_sample
+    tokenizer = transformers.GPT2TokenizerFast.from_pretrained('gpt2')
 
     opt = optax.chain(
         optax.scale(1 / gradient_accumulation_steps),
@@ -328,6 +334,26 @@ if __name__ == "__main__":
         noise_alpha = 0.99
 
         while True:
+            if args.sample_every and (step % args.sample_every == 1):
+                tokens = ['<|endoftext|>']
+
+                start = time.time()
+
+                provided_ctx = len(tokens)
+                pad_amount = seq - provided_ctx
+
+                padded_tokens = np.pad(tokens, ((pad_amount, 0),)).astype(np.uint32)
+                batched_tokens = np.array([padded_tokens] * global_val_batch)
+                length = np.ones(global_val_batch, dtype=np.uint32) * len(tokens)
+
+                output = network.generate(batched_tokens, length, 512, {"top_p": np.ones(global_val_batch) * 0.9,
+                                                                        "temp": np.ones(global_val_batch) * 0.75})
+
+                for idx, o in enumerate(output[1][0][:, :, 0]):
+                    print(f"sample {idx}: {repr(tokenizer.decode(o))}")
+
+                print(f"completion done in {time.time() - start:06}s")
+
             if (step % ckpt_every == 1) or step == total_steps:
                 print(f"saving a checkpoint for step {step}")
                 save(
