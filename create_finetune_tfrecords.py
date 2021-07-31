@@ -152,10 +152,17 @@ def enforce_min_unique(seqs, min_unique_tokens, enc, verbose=False):
             print(f"excluding with {len(set(seq))} unique tokens:\n\n{repr(text)}\n\n")
 
 
-def split_on_interior_eot(doc, encoder, disable=False):
+def split_on_interior_eot(doc, encoder, disable=False, ):
     if disable:
         return [doc]
-    return [d for d in doc.split(encoder.eos_token) if d]
+    docs = [d for d in doc.split(encoder.eos_token) if d]
+    print('base doc:')
+    print(doc[:20000])
+    print(f'\n-----\nmade {len(docs)} segments.  first ones:\n')
+    for d in docs[:5]:
+        print(d)
+        print('\n----\n')
+    return docs
 
 
 def archive_to_tokens(f, encoder, args, prefix=[]):
