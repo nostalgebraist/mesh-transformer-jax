@@ -164,20 +164,20 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
     reader = Reader(f)
     for file_doc in reader.stream_data(threaded=False):
         accum = []
+        accum.extend(prefix)
         for doc in split_on_interior_eot(file_doc, encoder, disable=args.treat_eot_as_text):
             if args.normalize_with_ftfy:  # fix text with ftfy if specified
                 doc = ftfy.fix_text(doc, normalization='NFKC')
             if args.normalize_with_wikitext_detokenize:
                 doc = wikitext_detokenizer(doc)
             doc = encoder.encode(doc) + [encoder.eos_token_id]  # read document from lmd and append separator token
-            accum.extend(prefix + doc)
-            prefix = []
+            accum.extend(doc)
 
             if len(accum) > 2049:
                 yield accum[:2049]
-                prefix = accum[2049:]
-    if prefix:
-        yield prefix
+                accum = accum[2049:]
+    if accum:
+        yield accum
 
 
 def get_files(input_dir):
