@@ -1,6 +1,7 @@
 import argparse
 import json
 import time
+import multiprocessing
 
 import jax
 import numpy as np
@@ -146,6 +147,9 @@ def eval_step(network, data):
 
 
 if __name__ == "__main__":
+    # huggingface tokenizers gets very angry if you fork
+    multiprocessing.set_start_method("spawn")
+
     args = parse_args()
     params = json.load(open(args.config))
 
