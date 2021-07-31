@@ -60,6 +60,7 @@ def parse_args():
     parser.add_argument("--sample-length", type=int, default=2000)
     parser.add_argument("--temp", type=float, default=0.95)
     parser.add_argument("--top-p", type=float, default=0.95)
+    parser.add_argument("--save-token-val-loss", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -137,16 +138,22 @@ def train_step(network, data):
     )
 
 
-def eval_step(network, data):
+def eval_step(network, data, return_token_loss=False):
     inputs = {
         "obs": data[:, :-1],
         "target": data[:, 1:],
     }
 
     out = network.eval(inputs)
-    loss = out["loss"]
+    loss = np.array(out["loss"])
+    print(("loss.shape", loss.shape))
 
-    return np.array(loss).mean()
+    if return_token_loss:
+        all_loss = np.array(out["all_loss"])
+        print(("all_loss.shape", loss.all_loss))
+        return loss.mean(), all_loss
+
+    return loss.mean()
 
 
 if __name__ == "__main__":
@@ -330,7 +337,7 @@ if __name__ == "__main__":
         print("compiling eval fn")
         start = time.time()
         for val_set in val_sets.values():
-            eval_step(network, val_set.get_samples())
+            eval_step(network, val_set.get_samples(), return_token_loss=args.save_token_val_loss)
             val_set.reset()
         print(f"Eval fn compiled in {time.time() - start:.06}s")
 
@@ -387,18 +394,45 @@ if __name__ == "__main__":
             ) or (step == total_steps):  # 1 because we've already taken a step to compile train fn
                 for name, val_set in val_sets.items():
                     val_loss = []
+                    per_token_losses = []
+                    per_token_loss_contexts = []
                     for i, _ in tqdm(
                         zip(val_set.sample_once(), range(val_batches)),
                         desc=f"validation for step {step}, set {name}",
                         total=val_batches,
                     ):
-                        val_loss.append(eval_step(network, i))
+                        if args.save_token_val_loss:
+                            batch_loss, per_token_loss = eval_step(network, i)
+                            val_loss.append(batch_loss)
+                            per_token_losses.append(per_token_loss)
+                            per_token_loss_contexts.append(i)
+                        else:
+                            val_loss.append(eval_step(network, i))
                     val_set.reset()
 
                     val_loss = np.array(val_loss).mean()
                     print(f"validation loss for step {step}, set {name}: {val_loss}")
 
                     wandb.log({f"val/loss_{name}": float(val_loss)}, step)
+
+                    if args.save_token_val_loss:
+                        _savepath = f"gs://{bucket}/{model_dir}/{name}__{step}.npz"
+                        print(f"saving per-token val losses to {_savepath}")
+
+                        per_token_loss_contexts = np.stack(per_token_loss_contexts, axis=0)
+                        per_token_losses = np.stack(per_token_losses, axis=0)
+
+                        print(f"contexts: {per_token_loss_contexts.shape}")
+                        print(f"losses: {per_token_losses.shape}")
+
+                        start = time.time()
+
+                        with open(_savepath, "w") as f:
+                            np.savez_compressed(f,
+                                                contexts=per_token_loss_contexts,
+                                                losses=per_token_losses
+                                                )
+                        print(f"saved per-token val losses for step {step} in {time.time() - start:.06}s")
 
                 results = evaluator.evaluate(adaptor, eval_task_dict, False, 0, None)
 
