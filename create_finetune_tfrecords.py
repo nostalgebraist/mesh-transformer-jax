@@ -163,16 +163,21 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
     # if data_to_prepend is not None, prepend data_to_prepend + a EOS separator to the encoded data
     reader = Reader(f)
     for file_doc in reader.stream_data(threaded=False):
+        accum = []
         for doc in split_on_interior_eot(file_doc, encoder, disable=args.treat_eot_as_text):
             if args.normalize_with_ftfy:  # fix text with ftfy if specified
                 doc = ftfy.fix_text(doc, normalization='NFKC')
             if args.normalize_with_wikitext_detokenize:
                 doc = wikitext_detokenizer(doc)
             doc = encoder.encode(doc) + [encoder.eos_token_id]  # read document from lmd and append separator token
-            chunks = split_list(prefix + doc, 2049)  # split into n_ctx + 1 size chunks
-            chunks, prefix = chunks[:-1], chunks[-1]
-            if len(chunks) > 0:
-                yield chunks
+            accum.extend(prefix + doc)
+            prefix = []
+
+            if len(accum) > 2049:
+                yield accum[:2049]
+                prefix = accum[2049:]
+    if prefix:
+        yield prefix
 
 
 def get_files(input_dir):
@@ -207,8 +212,6 @@ def create_tfrecords(files, args):
             for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
                 # if the last chunk < chunk size, take it and append it to the beginning of the next file
                 data_to_prepend = []
-                if isinstance(tokenized_files[-1], int):
-                    print(tokenized_files)
                 n_tokens = len(tokenized_files[-1])
                 if n_tokens < 2049:
                     data = tokenized_files.pop(-1)
