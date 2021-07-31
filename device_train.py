@@ -402,7 +402,7 @@ if __name__ == "__main__":
                         total=val_batches,
                     ):
                         if args.save_token_val_loss:
-                            batch_loss, per_token_loss = eval_step(network, i)
+                            batch_loss, per_token_loss = eval_step(network, i, return_token_loss=True)
                             val_loss.append(batch_loss)
                             per_token_losses.append(per_token_loss)
                             per_token_loss_contexts.append(i)
