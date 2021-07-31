@@ -209,13 +209,18 @@ def create_tfrecords(files, args):
         print(f'starting epoch {ep_ix}\n\t{len(all_sequences_across_epochs)} sequences so far\n\t{len(data_to_prepend)} tokens rolled over from last epoch\n\tfirst file this ep is {files[0]}')
 
         for f in tqdm(files, mininterval=10, smoothing=0):
+            file_sequences = []
             for sequence in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
                 data_to_prepend = []
-                if len(sequence) == 2049:
-                    tokenized_files_array.extend(sequence)
+                file_sequences.append(sequence)
 
-            if len(sequence) < 2049:
-                data_to_prepend = sequence
+            last_seq = file_sequences[-1]
+            if len(last_seq) < 2049:
+                data_to_prepend = last_seq
+                file_sequences = file_sequences[:-1]
+
+            for seq in file_sequences:
+                tokenized_files_array.extend(seq)
 
         if not args.preserve_data_order:
             random.shuffle(tokenized_files_array)
