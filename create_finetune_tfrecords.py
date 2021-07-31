@@ -173,6 +173,7 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
             chunks, prefix = chunks[:-1], chunks[-1]
             if len(chunks) > 0:
                 yield chunks
+    yield prefix
 
 
 def get_files(input_dir):
