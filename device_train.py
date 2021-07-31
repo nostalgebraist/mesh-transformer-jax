@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from mesh_transformer import util
 from mesh_transformer.checkpoint import read_ckpt, write_ckpt
-from mesh_transformer.transformer_shard import CausalTransformer
+from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerV2
 from tfrecord_loader import TFRecordNewInputs
 from smart_open import open
 from google.cloud import storage
@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument("--config", type=str, default=None, help="Config file location")
     parser.add_argument("--tune-model-path", type=str, default=None, help="Base model to finetune")
     parser.add_argument("--fresh-opt", default=False, action="store_true", help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint")
+    parser.add_argument("--v2", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -244,7 +245,8 @@ if __name__ == "__main__":
     # load + run
     with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
         print("initializing network")
-        network = CausalTransformer(params)
+        model_cls = CausalTransformerV2 if args.v2 else CausalTransformer
+        network = model_cls(params)
 
         if initial_ckpt_state_path:
             print("loading network")
