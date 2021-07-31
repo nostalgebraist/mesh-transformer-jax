@@ -2,6 +2,8 @@ import argparse
 import json
 import time
 import multiprocessing
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import jax
 import numpy as np
