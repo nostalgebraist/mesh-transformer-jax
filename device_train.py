@@ -55,6 +55,7 @@ def parse_args():
         help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint",
     )
     parser.add_argument("--sample-every", type=int, default=0)
+    parser.add_argument("--sample-length", type=int, default=2000)
     parser.add_argument("--temp", type=float, default=0.95)
     parser.add_argument("--top-p", type=float, default=0.95)
 
@@ -352,8 +353,11 @@ if __name__ == "__main__":
                 batched_tokens = np.array([padded_tokens] * global_val_batch)
                 length = np.ones(global_val_batch, dtype=np.uint32) * len(tokens)
 
-                output = network.generate(batched_tokens, length, 512, {"top_p": np.ones(global_val_batch) * args.top_p,
-                                                                        "temp": np.ones(global_val_batch) * args.temp})
+                output = network.generate(batched_tokens, length, args.sample_length,
+                                          {
+                                              "top_p": np.ones(global_val_batch) * args.top_p,
+                                              "temp": np.ones(global_val_batch) * args.temp
+                                          })
 
                 for idx, o in enumerate(output[1][0][:, :, 0]):
                     print(f"sample {idx}: {repr(tokenizer.decode(o))}")
