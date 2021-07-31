@@ -417,8 +417,8 @@ if __name__ == "__main__":
                         _savepath = f"gs://{bucket}/{model_dir}/{name}__{step}.npz"
                         print(f"saving per-token val losses to {_savepath}")
 
-                        per_token_loss_contexts = np.stack(per_token_loss_contexts, axis=0)
-                        per_token_losses = np.stack(per_token_losses, axis=0)
+                        per_token_loss_contexts = np.concatenate(per_token_loss_contexts, axis=0)
+                        per_token_losses = np.concatenate(per_token_losses, axis=0)
 
                         print(f"contexts: {per_token_loss_contexts.shape}")
                         print(f"losses: {per_token_losses.shape}")
