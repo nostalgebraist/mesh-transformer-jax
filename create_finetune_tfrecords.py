@@ -171,6 +171,8 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
             doc = encoder.encode(doc) + [encoder.eos_token_id]  # read document from lmd and append separator token
             chunks = split_list(prefix + doc, 2049)  # split into n_ctx + 1 size chunks
             chunks, prefix = chunks[:-1], chunks[-1]
+            print(("chunks", chunks))
+            print(("prefix", prefix))
             if len(chunks) > 0:
                 yield chunks
     yield [prefix]
