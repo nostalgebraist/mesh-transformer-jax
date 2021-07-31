@@ -179,7 +179,7 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
             chunks = split_list(prefix + doc, 2049)  # split into n_ctx + 1 size chunks
             chunks, prefix = chunks[:-1], chunks[-1]
             if len(chunks) > 0:
-            yield chunks
+                yield chunks
 
 
 def get_files(input_dir):
