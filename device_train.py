@@ -425,7 +425,7 @@ if __name__ == "__main__":
 
                         start = time.time()
 
-                        with open(_savepath, "w") as f:
+                        with open(_savepath, "wb") as f:
                             np.savez_compressed(f,
                                                 contexts=per_token_loss_contexts,
                                                 losses=per_token_losses
