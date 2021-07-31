@@ -150,7 +150,7 @@ def eval_step(network, data, return_token_loss=False):
 
     if return_token_loss:
         all_loss = np.array(out["all_loss"])
-        print(("all_loss.shape", loss.all_loss))
+        print(("all_loss.shape", all_loss.shape))
         return loss.mean(), all_loss
 
     return loss.mean()
