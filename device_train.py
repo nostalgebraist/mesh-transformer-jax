@@ -364,7 +364,7 @@ if __name__ == "__main__":
 
                 print(f"completion done in {time.time() - start:06}s")
 
-            if (step % ckpt_every == 1) or step == total_steps:
+            if (step > 1) and ((step % ckpt_every == 1) or (step == total_steps)):
                 print(f"saving a checkpoint for step {step}")
                 save(
                     network,
