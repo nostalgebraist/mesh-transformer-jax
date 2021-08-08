@@ -306,6 +306,7 @@ if __name__ == "__main__":
                 # get the scheduler step stored in the just-initialized optimizer
                 # should be zero
                 init_sched_state = network.state["opt_state"][-1]
+                print(("init_sched_state", init_sched_state))
 
             start = time.time()
             network.state = read_ckpt(
