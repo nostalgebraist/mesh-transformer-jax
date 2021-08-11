@@ -54,6 +54,9 @@ def parse_args():
                                    )
     shuffle_pack_args.add_argument("--seed", type=int, default=10,
                                    help="random seed for shuffling data (default: 10)")
+    shuffle_pack_args.add_argument("--preserve-doc-order",
+                                   default=False, action="store_true",
+                                   help="Disables shuffling of documents (as distinct from the later shuffling of sequences)")
     shuffle_pack_args.add_argument("--preserve-data-order",
                                    default=False, action="store_true",
                                    help="Disables shuffling, so the input and output data have the same order.")
@@ -194,7 +197,7 @@ def file_to_tokenized_docs_generator(file_path, encoder, args):
 def read_files_to_tokenized_docs(files, args, encoder):
     docs = []
 
-    if args.preserve_data_order:
+    if args.preserve_data_order or args.preserve_doc_order:
         files = sorted(files)
     else:
         random.shuffle(files)
@@ -202,7 +205,7 @@ def read_files_to_tokenized_docs(files, args, encoder):
     for f in tqdm(files, mininterval=10, smoothing=0):
         docs.extend(file_to_tokenized_docs_generator(f, encoder, args))
 
-    if not args.preserve_data_order:
+    if not (args.preserve_data_order or args.preserve_doc_order):
         # shuffle at individual document level
         random.shuffle(docs)
 
@@ -260,7 +263,7 @@ def create_tfrecords(files, args):
     # ep 2+
     for ep_ix in range(1, args.n_repack_epochs):
         # re-shuffle
-        if not args.preserve_data_order:
+        if not (args.preserve_data_order or args.preserve_doc_order):
             random.shuffle(docs)
             full_seqs, trailing_data = chunk_and_finalize(docs, args, encoder)
         else:
