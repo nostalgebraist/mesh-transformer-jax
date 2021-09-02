@@ -349,7 +349,7 @@ if __name__ == "__main__":
 
         G_noise_avg = None
         S_noise_avg = None
-        noise_alpha = 0.99
+        noise_alpha = 1 - (0.01 * gradient_accumulation_steps / 32)
 
         while True:
             if args.sample_every and (step % args.sample_every == 1):
