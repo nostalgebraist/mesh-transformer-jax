@@ -149,7 +149,13 @@ class CausalTransformer:
 
                 return out["loss"], out["last_loss"]
 
-            train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
+            if use_adapters:
+                _train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
+
+                def train_loss_fn(base_params, adapter_params, x, y):
+                    return _train_loss_fn(hk.merge(base_params, adapter_params), x, y)
+            else:
+                train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
             def opt_subset_params(params):
                 if use_adapters:
@@ -160,7 +166,10 @@ class CausalTransformer:
                 ctx, tgt = batch
 
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(opt_subset_params(state["params"])), ctx, tgt)
+                if use_adapters:
+                    (loss, last_loss), grad = val_grad_fn(*to_bf16(base_and_adapter_params(state["params"])[::-1]), ctx, tgt)
+                else:
+                    (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt)
 
                 new_grad = jax.tree_multimap(lambda a, b: a + b, old_grad, grad)
                 gnorm = global_norm(grad)
@@ -168,12 +177,15 @@ class CausalTransformer:
 
             if ctx.shape[0] == 1:
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(opt_subset_params(state["params"])), ctx[0], tgt[0])
+                if use_adapters:
+                    (loss, last_loss), grad = val_grad_fn(*to_bf16(base_and_adapter_params(state["params"])[::-1]), ctx[0], tgt[0])
+                else:
+                    (loss, last_loss), grad = val_grad_fn(to_bf16(opt_subset_params(state["params"])), ctx[0], tgt[0])
                 gnorm = global_norm(grad)
             else:
                 grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
-                                                                    opt_subset_params(state["params"])),
+                                                                    state["params"]),
                                                        (ctx, tgt))
 
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
