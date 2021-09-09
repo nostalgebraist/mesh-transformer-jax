@@ -174,7 +174,7 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
 
     loaded_pytree = jax.tree_unflatten(structure, unsharded)
 
-    if not load_opt and opt_state:
+    if not load_opt and original_opt_state:
         loaded_pytree['opt_state'] = original_opt_state
     return loaded_pytree
 
