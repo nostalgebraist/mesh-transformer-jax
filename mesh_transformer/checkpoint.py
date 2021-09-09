@@ -187,7 +187,7 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_ck
     if not load_opt and original_opt_state:
         loaded_pytree['opt_state'] = original_opt_state
     if adapter_ckpt:
-        loaded_pytree['state'] = hk.data_structures.merge(base_params, loaded_pytree['state'])
+        loaded_pytree['params'] = hk.data_structures.merge(base_params, loaded_pytree['params'])
     return loaded_pytree
 
 
