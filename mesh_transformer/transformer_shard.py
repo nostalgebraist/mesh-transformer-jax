@@ -318,6 +318,10 @@ class CausalTransformer:
 
         print(f"param keys: {self.state['params'].keys()}")
 
+        base_params, adapter_params = base_and_adapter_params(self.state['params'])
+        print(f"\nbase keys: {base_params.keys()}")
+        print(f"\nadapt keys: {adapter_params.keys()}")
+
         param_count = hk.data_structures.tree_size(self.state['params'])
         head_print(f"Total parameters: {param_count}")
 
