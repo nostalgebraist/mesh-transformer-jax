@@ -285,10 +285,6 @@ if __name__ == "__main__":
             print(f"network loaded in {time.time() - start:.06}s")
 
         if use_adapters:
-            start = time.time()
-            network.init_adapters(params)
-            print(f"adapters initialized in {time.time() - start:.06}s")
-
             if adapter_ckpt_state_path:
                 base_params = network.state["base_params"]
                 start = time.time()
