@@ -181,7 +181,7 @@ def head_print(*args, **kwargs):
 
 
 def base_and_adapter_params(params):
-    pred = lambda module_name, name, value: 'adapter_layer_' not in name
+    pred = lambda module_name, name, value: 'adapter_layer_' not in module_name
     return hk.data_structures.partition(pred, params)
 
 
