@@ -60,6 +60,7 @@ def write_ckpt(pytree, dir, shard, adapter_ckpt=False):
     # ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     if adapter_ckpt:
+        print(f"write_ckpt | all keys: {pytree['params'].keys()}")
         _pytree = {k: v for k, v in pytree.items() if k != "params"}
         _pytree['params'] = base_and_adapter_params(pytree['params'])[1]
         print(f"only saving these params: {_pytree['params'].keys()}")
