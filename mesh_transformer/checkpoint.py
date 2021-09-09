@@ -60,7 +60,11 @@ def write_ckpt(pytree, dir, shard, adapter_ckpt=False):
     # ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     if adapter_ckpt:
-        pytree['params'] = base_and_adapter_params(pytree['params'])[1]
+        _pytree = {k: v for k, v in pytree.items() if k != "params"}
+        _pytree['params'] = base_and_adapter_params(pytree['params'])[1]
+        base_pytree = pytree
+        pytree = _pytree
+        print(f"only saving these params: {pytree['params'].keys()}")
 
     flattened, structure = jax.tree_flatten(pytree)
 
