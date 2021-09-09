@@ -153,7 +153,7 @@ class CausalTransformer:
                 _train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
                 def train_loss_fn(adapter_params, base_params, x, y):
-                    return _train_loss_fn(hk.merge(base_params, adapter_params), x, y)
+                    return _train_loss_fn(hk.data_structures.merge(base_params, adapter_params), x, y)
             else:
                 train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
