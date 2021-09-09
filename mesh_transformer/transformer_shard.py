@@ -65,7 +65,7 @@ class CausalTransformerShard(hk.Module):
 
         for l, al in zip(self.transformer_layers, self.adapter_layers):
             if al is not None:
-                x = x + hk.remat(l)(x, attn_bias) + hk.remat(al)(x, attn_bias)
+                x = x + hk.remat(l)(x, attn_bias) + hk.remat(al)(x)
             else:
                 x = x + hk.remat(l)(x, attn_bias)
 
