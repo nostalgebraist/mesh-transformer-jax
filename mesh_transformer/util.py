@@ -182,7 +182,12 @@ def head_print(*args, **kwargs):
 
 def base_and_adapter_params(params):
     pred = lambda module_name, name, value: 'adapter_layer_' not in module_name
-    return hk.data_structures.partition(pred, params)
+    out = hk.data_structures.partition(pred, params)
+
+    print(f"base_and_adapter_params | base keys: {out[0].keys()}")
+    print(f"\nbase_and_adapter_params | adapt keys: {out[1].keys()}")
+
+    return out
 
 
 if __name__ == "__main__":

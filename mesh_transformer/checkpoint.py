@@ -62,11 +62,11 @@ def write_ckpt(pytree, dir, shard, adapter_ckpt=False):
     if adapter_ckpt:
         _pytree = {k: v for k, v in pytree.items() if k != "params"}
         _pytree['params'] = base_and_adapter_params(pytree['params'])[1]
-        base_pytree = pytree
-        pytree = _pytree
-        print(f"only saving these params: {pytree['params'].keys()}")
+        print(f"only saving these params: {_pytree['params'].keys()}")
 
-    flattened, structure = jax.tree_flatten(pytree)
+        flattened, structure = jax.tree_flatten(_pytree)
+    else:
+        flattened, structure = jax.tree_flatten(pytree)
 
     start = time.time()
     # cpu_flattened = jax.device_put(flattened, cpu_device)
