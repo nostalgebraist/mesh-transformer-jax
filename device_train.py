@@ -263,7 +263,9 @@ if __name__ == "__main__":
     # load + run
     with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
         print("initializing network")
+        start = time.time()
         network = CausalTransformer(params)
+        print(f"network initialized in {time.time() - start:.06}s")
 
         if initial_ckpt_state_path:
             print("loading network")
@@ -283,6 +285,7 @@ if __name__ == "__main__":
             print(f"network loaded in {time.time() - start:.06}s")
 
         if use_adapters:
+            start = time.time()
             network.init_adapters(params)
             print(f"adapters initialized in {time.time() - start:.06}s")
 
