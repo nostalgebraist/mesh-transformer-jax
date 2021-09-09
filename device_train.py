@@ -167,12 +167,14 @@ if __name__ == "__main__":
     lr = params["lr"]
     end_lr = params["end_lr"]
     weight_decay = params["weight_decay"]
-   
+
     # alpha parameter for the exponential moving averages used to compute B_simple
     noise_scale_alpha = params.get("noise_scale_alpha", 0.01)
 
+    use_adapters = params.get("use_adapters", False)
+
     scheduler = util.gpt3_schedule(warmup_steps, anneal_steps, lr, end_lr)
-    
+
     opt = optax.chain(
         optax.scale(1 / gradient_accumulation_steps),
         clip_by_global_norm(1),
@@ -199,14 +201,16 @@ if __name__ == "__main__":
 
     step = 0
     initial_ckpt_state_path = None
+    adapter_ckpt_state_path = None
     train_loader = None
 
     if args.tune_model_path:
-        print('`--tune_model_path` passed: we are beginning a fine-tuning run')
+        # print('`--tune_model_path` passed: we are beginning a fine-tuning run')
         fine_tuning = True
         initial_ckpt_state_path = args.tune_model_path
-    else:
-        print('`--tune_model_path` not passed: we are continuing a fine-tuning run from a checkpoint (or we are not fine-tuning)')
+
+    if (not args.tune_model_path) or use_adapters:
+        # print('`--tune_model_path` not passed: we are continuing a fine-tuning run from a checkpoint (or we are not fine-tuning)')
         fine_tuning = False
         initial_ckpt_model_dir = model_dir
         initial_ckpt_path = f"gs://{bucket}/{initial_ckpt_model_dir}"
@@ -216,7 +220,10 @@ if __name__ == "__main__":
             with open(meta_path, "r") as f:
                 meta = json.load(f)
             ckpt_step = meta["checkpoints"][-1]
-            initial_ckpt_state_path = f"{initial_ckpt_path}/step_{ckpt_step}/"
+            if use_adapters:
+                adapter_ckpt_state_path = f"{initial_ckpt_path}/step_{ckpt_step}/"
+            else:
+                initial_ckpt_state_path = f"{initial_ckpt_path}/step_{ckpt_step}/"
             print(f"state will be restored from checkpoint {ckpt_step}")
 
             step = ckpt_step
@@ -274,6 +281,18 @@ if __name__ == "__main__":
                 network.state["opt_state"][-1] = init_sched_state
 
             print(f"network loaded in {time.time() - start:.06}s")
+
+        if use_adapters:
+            network.init_adapters(params)
+            print(f"adapters initialized in {time.time() - start:.06}s")
+
+            if adapter_ckpt_state_path:
+                base_params = network.state["base_params"]
+                start = time.time()
+                network.state = read_ckpt(network.state, adapter_ckpt_state_path, devices.shape[1], load_opt=True)
+                network.state["base_params"] = base_params
+
+                print(f"adapters loaded in {time.time() - start:.06}s")
 
         print('compiling train fn')
         start = time.time()

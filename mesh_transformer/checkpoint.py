@@ -58,6 +58,8 @@ def write_ckpt(pytree, dir, shard):
     # ckpt_dir = Path(dir)
     # ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    pytree = {k: v for k, v in pytree.items() if k != 'base_params'}
+
     flattened, structure = jax.tree_flatten(pytree)
 
     start = time.time()
@@ -134,6 +136,8 @@ def reshard(x, old_shape):
 def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
     if shards_out is None:
         shards_out = shards_in
+
+    pytree = {k: v for k, v in pytree.items() if k != 'base_params'}
 
     old_flattened, structure = jax.tree_flatten(pytree)
 
