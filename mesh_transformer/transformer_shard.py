@@ -142,6 +142,7 @@ class CausalTransformer:
         self.config = config
         optimizer = config["optimizer"]
         use_adapters = config.get("use_adapters", False)
+        self.adapter_params_keys = None
 
         def eval(state, ctx, tgt, ctx_length, use_adapters=None):
             def eval_loss(x, y, mask):
@@ -163,11 +164,16 @@ class CausalTransformer:
 
             train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
+            def opt_subset_params(params):
+                if use_adapters:
+                    return {k: params[k] for k in self.adapter_params_keys}
+                return params
+
             def microbatch(old_grad, batch):
                 ctx, tgt = batch
 
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt)
+                (loss, last_loss), grad = val_grad_fn(to_bf16(opt_subset_params(state["params"])), ctx, tgt)
 
                 new_grad = jax.tree_multimap(lambda a, b: a + b, old_grad, grad)
                 gnorm = global_norm(grad)
@@ -175,22 +181,22 @@ class CausalTransformer:
 
             if ctx.shape[0] == 1:
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0])
+                (loss, last_loss), grad = val_grad_fn(to_bf16(opt_subset_params(state["params"])), ctx[0], tgt[0])
                 gnorm = global_norm(grad)
             else:
                 grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
-                                                                    state["params"]),
+                                                                    opt_subset_params(state["params"])),
                                                        (ctx, tgt))
 
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
 
             grad = jax.lax.pmean(grad, "batch")
             grad_norm = global_norm(grad)
-            updates, new_opt_state = optimizer.update(grad, state["opt_state"], state["params"])
+            updates, new_opt_state = optimizer.update(grad, state["opt_state"], opt_subset_params(state["params"]))
 
             return to_f32(loss), to_f32(last_loss), to_f32(grad_norm), to_f32(grad_norm_micro), {
-                "params": optax.apply_updates(state["params"], to_f32(updates)),
+                "params": optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates)),
                 "step": state["step"] + 1,
                 "opt_state": new_opt_state
             }
@@ -348,17 +354,21 @@ class CausalTransformer:
         head_print("mp", mp)
 
         adapter_state = self.init_adapters_xmap(jnp.array(key.take(mp_per_host)), x)
-        self.state["base_params"] = self.state["params"]
-        self.state.update(adapter_state)
+
+        self.adapter_params_keys = adapter_state['params'].keys()
+        print(f"adapter_params_keys: {self.adapter_params_keys}")
+
+        self.state["params"].update(adapter_state['params'])
+        self.state["opt_state"] = adapter_state["opt_state"]
 
         param_count = hk.data_structures.tree_size(self.state['params'])
         head_print(f"Total adapter parameters: {param_count}")
 
     def write_ckpt(self, path, shard):
-        write_ckpt(self.state, path, shard)
+        write_ckpt(self.state, path, shard, self.adapter_params_keys)
 
     def load_ckpt(self, path):
-        self.state = read_ckpt(self.state, path, thread_resources.env.shape['mp'])
+        self.state = read_ckpt(self.state, path, thread_resources.env.shape['mp'], self.adapter_params_keys)
 
     def train(self, sample):
         # print("train iter")

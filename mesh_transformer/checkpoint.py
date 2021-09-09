@@ -54,11 +54,12 @@ def split(a, n):
     return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
-def write_ckpt(pytree, dir, shard):
+def write_ckpt(pytree, dir, shard, adapter_params_keys=None):
     # ckpt_dir = Path(dir)
     # ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    pytree = {k: v for k, v in pytree.items() if k != 'base_params'}
+    if adapter_params_keys:
+        pytree['state'] = {k: pytree['state'][k] for k in adapter_params_keys}
 
     flattened, structure = jax.tree_flatten(pytree)
 
@@ -133,11 +134,19 @@ def reshard(x, old_shape):
     return out
 
 
-def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
+def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_params_keys=None):
     if shards_out is None:
         shards_out = shards_in
 
-    pytree = {k: v for k, v in pytree.items() if k != 'base_params'}
+    base_state = {}
+    if adapter_params_keys:
+        _pytree = {k: v for k, v in pytree.items() if k != 'state'}
+        _pytree['state'] = {}
+        for k in pytree['state'].keys():
+            if k in adapter_params_keys:
+                _pytree['state'][k] = pytree['state'][k]
+        else:
+            base_state[k] = pytree['state'][k]
 
     old_flattened, structure = jax.tree_flatten(pytree)
 
@@ -176,6 +185,7 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
 
     if not load_opt and original_opt_state:
         loaded_pytree['opt_state'] = original_opt_state
+    loaded_pytree['state'].update(base_state)
     return loaded_pytree
 
 
