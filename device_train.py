@@ -286,10 +286,8 @@ if __name__ == "__main__":
 
         if use_adapters:
             if adapter_ckpt_state_path:
-                base_params = network.state["base_params"]
                 start = time.time()
                 network.state = read_ckpt(network.state, adapter_ckpt_state_path, devices.shape[1], load_opt=True, adapter_ckpt=True)
-                network.state["base_params"] = base_params
 
                 print(f"adapters loaded in {time.time() - start:.06}s")
 
