@@ -14,7 +14,7 @@ from jax.experimental.pjit import pjit
 from mesh_transformer.checkpoint import read_ckpt, write_ckpt, write_ckpt_v2, load_ckpt_v2
 from mesh_transformer.layers import EmbeddingShard, TransformerLayerShard, AdapterLayerShard, RelativePositionEmbs, ProjectionShard, \
     TransformerLayerShardV2, Projection, EmbeddingShardV2
-from mesh_transformer.util import to_f32, to_bf16, maybe_shard, head_print, global_norm
+from mesh_transformer.util import to_f32, to_bf16, maybe_shard, head_print, global_norm, base_and_adapter_params
 from jax.experimental import PartitionSpec as P
 
 
@@ -51,10 +51,7 @@ class CausalTransformerShard(hk.Module):
         else:
             self.rpe = None
 
-    def eval(self, context, target, z_loss=0., mask=0.0, use_adapters=None):
-        if use_adapters is None:
-            use_adapters = self.use_adapters
-
+    def eval(self, context, target, z_loss=0., mask=0.0):
         input_len = context.shape[0]
 
         if self.rpe is not None:
@@ -67,18 +64,15 @@ class CausalTransformerShard(hk.Module):
         x = hk.remat(self.embed)(context)
 
         for l, al in zip(self.transformer_layers, self.adapter_layers):
-            if use_adapters and al is not None:
+            if al is not None:
                 x = x + hk.remat(l)(x, attn_bias) + hk.remat(al)(x, attn_bias)
             else:
                 x = x + hk.remat(l)(x, attn_bias)
 
         return hk.remat(self.proj.loss)(x, target, z_loss)
 
-    def loss(self, ctx, tgt, z_loss=False, mask=0.0, use_adapters=None):
-        if use_adapters is None:
-            use_adapters = self.use_adapters
-
-        loss, correct = self.eval(ctx, tgt, float(z_loss), mask=mask, use_adapters=use_adapters)
+    def loss(self, ctx, tgt, z_loss=False, mask=0.0):
+        loss, correct = self.eval(ctx, tgt, float(z_loss), mask=mask)
 
         return {
             "loss": loss.mean(),
@@ -86,12 +80,6 @@ class CausalTransformerShard(hk.Module):
             "all_loss": loss,
             "correct": correct
         }
-
-    def adapter_init_transform(self, x):
-        """this computation isn't useful for anything, it just gets params for init"""
-        for al in self.adapter_layers:
-            x = x + hk.remat(al)(x)
-        return x
 
     def generate_initial(self, context, length):
         # slice last token off the context (we use that in generate_once to generate the first new token)
@@ -142,12 +130,11 @@ class CausalTransformer:
         self.config = config
         optimizer = config["optimizer"]
         use_adapters = config.get("use_adapters", False)
-        self.adapter_params_keys = None
 
-        def eval(state, ctx, tgt, ctx_length, use_adapters=None):
+        def eval(state, ctx, tgt, ctx_length):
             def eval_loss(x, y, mask):
                 transformer = CausalTransformerShard(config)
-                return transformer.loss(x, y, mask=mask, use_adapters=use_adapters)
+                return transformer.loss(x, y, mask=mask)
 
             eval_loss_fn = hk.without_apply_rng(hk.transform(eval_loss)).apply
 
@@ -166,7 +153,7 @@ class CausalTransformer:
 
             def opt_subset_params(params):
                 if use_adapters:
-                    return {k: params[k] for k in self.adapter_params_keys}
+                    return base_and_adapter_params(params)[1]
                 return params
 
             def microbatch(old_grad, batch):
@@ -195,8 +182,14 @@ class CausalTransformer:
             grad_norm = global_norm(grad)
             updates, new_opt_state = optimizer.update(grad, state["opt_state"], opt_subset_params(state["params"]))
 
+            if use_adapters:
+                updated_params = optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates))
+                updated_params = hk.data_structures.merge(base_and_adapter_params(state['params'])[0])
+            else:
+                updated_params = optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates))
+
             return to_f32(loss), to_f32(last_loss), to_f32(grad_norm), to_f32(grad_norm_micro), {
-                "params": optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates)),
+                "params": updated_params,
                 "step": state["step"] + 1,
                 "opt_state": new_opt_state
             }
@@ -204,7 +197,7 @@ class CausalTransformer:
         def init(key, x):
             def train_loss(x, y):
                 transformer = CausalTransformerShard(config)
-                return transformer.loss(x, y, use_adapters=False)  # just init the base model
+                return transformer.loss(x, y)
 
             param_init_fn = hk.transform(hk.experimental.optimize_rng_use(train_loss)).init
 
@@ -219,20 +212,6 @@ class CausalTransformer:
                 out["opt_state"] = optimizer.init(params)
 
             return out
-
-        def init_adapters(key, x):
-            def adapter_init_transform(x):
-                transformer = CausalTransformerShard(config)
-                return transformer.adapter_init_transform(x)
-
-            param_init_fn = hk.transform(hk.experimental.optimize_rng_use(adapter_init_transform)).init
-
-            params = param_init_fn(key, x)
-
-            return {
-                "params": ("early_cast" in config and to_bf16 or to_f32)(params),
-                "opt_state": optimizer.init(params)
-            }
 
         def generate(state, key, ctx, ctx_length, aux, sampler_options):
             sampler = config["sampler"]
@@ -267,12 +246,6 @@ class CausalTransformer:
                                                              ["batch", ...]),
                                                     out_axes=["shard", ...],
                                                     axis_resources={'shard': 'mp', 'batch': 'dp'})
-
-        self.init_adapters_xmap = jax.experimental.maps.xmap(fun=init_adapters,
-                                                             in_axes=(["shard", ...],
-                                                                      ["batch", ...]),
-                                                             out_axes=["shard", ...],
-                                                             axis_resources={'shard': 'mp', 'batch': 'dp'})
 
         self.eval_xmap = jax.experimental.maps.xmap(fun=eval,
                                                     in_axes=(["shard", ...],
@@ -332,43 +305,11 @@ class CausalTransformer:
         param_count = hk.data_structures.tree_size(self.state['params'])
         head_print(f"Total parameters: {param_count}")
 
-    def init_adapters(self, config):
-        key = hk.PRNGSequence(42)
+    def write_ckpt(self, path, shard, adapter_ckpt):
+        write_ckpt(self.state, path, shard, adapter_ckpt)
 
-        assert thread_resources.env.shape['mp'] == config["cores_per_replica"]
-
-        dp = thread_resources.env.shape['dp']
-        mp = thread_resources.env.shape['mp']
-
-        mp_per_host = min(mp, 8)
-
-        dim = config["d_model"]
-
-        example_shape = (max(dp // jax.host_count(), 1), dim,)
-        x = jax.random.uniform(next(key), example_shape)  # batch, dim
-
-        head_print("key shape", jnp.array(key.take(mp_per_host)).shape)
-        head_print("in shape", x.shape)
-
-        head_print("dp", dp)
-        head_print("mp", mp)
-
-        adapter_state = self.init_adapters_xmap(jnp.array(key.take(mp_per_host)), x)
-
-        self.adapter_params_keys = adapter_state['params'].keys()
-        print(f"adapter_params_keys: {self.adapter_params_keys}")
-
-        self.state["params"].update(adapter_state['params'])
-        self.state["opt_state"] = adapter_state["opt_state"]
-
-        param_count = hk.data_structures.tree_size(self.state['params'])
-        head_print(f"Total adapter parameters: {param_count}")
-
-    def write_ckpt(self, path, shard):
-        write_ckpt(self.state, path, shard, self.adapter_params_keys)
-
-    def load_ckpt(self, path):
-        self.state = read_ckpt(self.state, path, thread_resources.env.shape['mp'], self.adapter_params_keys)
+    def load_ckpt(self, path, adapter_ckpt):
+        self.state = read_ckpt(self.state, path, thread_resources.env.shape['mp'], adapter_ckpt)
 
     def train(self, sample):
         # print("train iter")

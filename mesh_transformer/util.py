@@ -1,5 +1,7 @@
 import jax
 import jax.numpy as jnp
+import haiku as hk
+
 from jax.experimental.pjit import with_sharding_constraint
 from optax import AdditiveWeightDecayState, GradientTransformation, OptState
 
@@ -176,6 +178,11 @@ def unshard_axis(x, axis_name):
 def head_print(*args, **kwargs):
     if jax.host_id() == 0:
         print(*args, **kwargs)
+
+
+def base_and_adapter_params(params):
+    pred = lambda module_name, name, value: 'adapter_layer_' not in name
+    return hk.data_structures.partition(pred, params)
 
 
 if __name__ == "__main__":

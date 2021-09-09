@@ -47,7 +47,7 @@ def parse_args():
     return args
 
 
-def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
+def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True, adapter_ckpt=False):
     assert path
     client = storage.Client()
 
@@ -70,7 +70,7 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
     start = time.time()
     res = []
     for shard_id in range(mp):
-        write_ckpt(network.state, f"gs://{bucket}/{path}/step_{step}/", shard_id)
+        write_ckpt(network.state, f"gs://{bucket}/{path}/step_{step}/", shard_id, adapter_ckpt=adapter_ckpt)
 
     print(f"Wrote checkpoint in {time.time() - start:.06}s")
 
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             if adapter_ckpt_state_path:
                 base_params = network.state["base_params"]
                 start = time.time()
-                network.state = read_ckpt(network.state, adapter_ckpt_state_path, devices.shape[1], load_opt=True)
+                network.state = read_ckpt(network.state, adapter_ckpt_state_path, devices.shape[1], load_opt=True, adapter_ckpt=True)
                 network.state["base_params"] = base_params
 
                 print(f"adapters loaded in {time.time() - start:.06}s")
@@ -325,6 +325,7 @@ if __name__ == "__main__":
                      mp=cores_per_replica,
                      aux={"train_loader": train_dataset.get_state()},
                      delete_old=True,
+                     adapter_ckpt=use_adapters
                      )
 
             if step % val_every == 1:  # 1 because we've already taken a step to compile train fn

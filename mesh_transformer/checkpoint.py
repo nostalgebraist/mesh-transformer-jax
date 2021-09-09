@@ -10,8 +10,9 @@ import multiprocessing
 
 import ray
 from smart_open import open
+import haiku as hk
 
-from mesh_transformer.util import head_print
+from mesh_transformer.util import head_print, base_and_adapter_params
 
 pieces = 16  # how many files to split each shard across
 
@@ -54,12 +55,12 @@ def split(a, n):
     return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
-def write_ckpt(pytree, dir, shard, adapter_params_keys=None):
+def write_ckpt(pytree, dir, shard, adapter_ckpt=False):
     # ckpt_dir = Path(dir)
     # ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    if adapter_params_keys:
-        pytree['state'] = {k: pytree['state'][k] for k in adapter_params_keys}
+    if adapter_ckpt:
+        pytree['params'] = base_and_adapter_params(pytree['params'])[1]
 
     flattened, structure = jax.tree_flatten(pytree)
 
@@ -134,19 +135,14 @@ def reshard(x, old_shape):
     return out
 
 
-def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_params_keys=None):
+def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_ckpt=False):
     if shards_out is None:
         shards_out = shards_in
 
-    base_state = {}
-    if adapter_params_keys:
-        _pytree = {k: v for k, v in pytree.items() if k != 'state'}
-        _pytree['state'] = {}
-        for k in pytree['state'].keys():
-            if k in adapter_params_keys:
-                _pytree['state'][k] = pytree['state'][k]
-        else:
-            base_state[k] = pytree['state'][k]
+    base_params = None
+    if adapter_ckpt:
+        base_params, adapter_params = base_and_adapter_params(pytree['params'])[1]
+        pytree['params'] = adapter_params
 
     old_flattened, structure = jax.tree_flatten(pytree)
 
@@ -185,7 +181,8 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_pa
 
     if not load_opt and original_opt_state:
         loaded_pytree['opt_state'] = original_opt_state
-    loaded_pytree['state'].update(base_state)
+    if adapter_ckpt:
+        loaded_pytree['state'] = hk.data_structures.merge(base_params, loaded_pytree['state'])
     return loaded_pytree
 
 
