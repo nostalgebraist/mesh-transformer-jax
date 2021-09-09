@@ -208,7 +208,9 @@ class CausalTransformer:
                 "step": np.array(0),
             }
 
-            if not use_adapters:
+            if use_adapters:
+                out["opt_state"] = optimizer.init(base_and_adapter_params(params)[1])
+            else:
                 out["opt_state"] = optimizer.init(params)
 
             return out
