@@ -146,7 +146,7 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_ck
 
     base_params = None
     if adapter_ckpt:
-        base_params, adapter_params = base_and_adapter_params(pytree['params'])[1]
+        base_params, adapter_params = base_and_adapter_params(pytree['params'])
         pytree['params'] = adapter_params
 
     old_flattened, structure = jax.tree_flatten(pytree)
