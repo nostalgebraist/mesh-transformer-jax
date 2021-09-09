@@ -366,6 +366,39 @@ class TransformerLayerShard(hk.Module):
         return g_psum(attn_out + dense_out), {"k": k, "v": v, "tokens_decoded": given_length.astype(jnp.uint32)}
 
 
+class AdapterLayerShard(hk.Module):
+    def __init__(self, config, name=None, init_scale=1.):
+        super().__init__(name=name)
+        dim = config["d_model"]
+        shards = config["cores_per_replica"]
+        norm = getnorm(config["norm"])
+        self.is_rotary = config["pe"] == "rotary"
+
+        self.dim = dim
+        self.dim_per_shard = dim // shards
+
+        self.norm = norm
+
+        self.dense_proj = hk.Linear(self.dim_per_shard * 4 // config['adapter_downscale'])
+        self.dense_proj_o = hk.Linear(self.dim,
+                                      w_init=hk.initializers.TruncatedNormal(stddev=init_scale / np.sqrt(self.dim)))
+
+    def ff(self, x):
+        dense_proj = self.dense_proj(x)
+        dense_proj = jax.nn.gelu(dense_proj)
+        return self.dense_proj_o(dense_proj)
+
+    def __call__(self, x):
+        x = f_psum(x)
+        x = self.norm(x)
+
+        dense_out = self.ff(x)
+
+        return g_psum(dense_out)
+
+    # TODO: decode funcs
+
+
 # This new class combines the input and output projection into one matmul for better efficiency
 class TransformerLayerShardV2(hk.Module):
     def __init__(self, config, name=None, init_scale=1.):
