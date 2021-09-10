@@ -25,6 +25,7 @@ class CausalTransformerShard(hk.Module):
         shards = config["cores_per_replica"]
         layer_count = config["layers"]
         self.use_adapters = config.get("use_adapters", False)
+        self.remat_adapters = config.get("remat_adapters", True)
 
         self.transformer_layers = []
         self.adapter_layers = []
@@ -63,9 +64,14 @@ class CausalTransformerShard(hk.Module):
 
         x = hk.remat(self.embed)(context)
 
+        def adapter_opt_remat(layer):
+            if self.remat_adapters:
+                return hk.remat(layer)
+            return layer
+
         for l, al in zip(self.transformer_layers, self.adapter_layers):
             if al is not None:
-                x = x + hk.remat(l)(x, attn_bias) + hk.remat(al)(x)
+                x = x + hk.remat(l)(x, attn_bias) + adapter_opt_remat(al)(x)
             else:
                 x = x + hk.remat(l)(x, attn_bias)
 
