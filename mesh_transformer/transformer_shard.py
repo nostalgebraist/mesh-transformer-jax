@@ -196,10 +196,7 @@ class CausalTransformer:
 
             if use_adapters:
                 updated_params = optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates))
-                print(f"\nupdated_params keys (step1): {updated_params.keys()}")
-
                 updated_params = hk.data_structures.merge(updated_params, base_and_adapter_params(state['params'])[0])
-                print(f"\nupdated_params keys (step2): {updated_params.keys()}")
             else:
                 updated_params = optax.apply_updates(opt_subset_params(state["params"]), to_f32(updates))
 
