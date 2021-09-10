@@ -97,8 +97,10 @@ class CausalTransformerShard(hk.Module):
 
         states = []
 
-        for l in self.transformer_layers:
+        for l, al in zip(self.transformer_layers, self.adapter_layers):
             res, layer_state = l.get_init_decode_state(x, length - 1, attn_bias)
+            if al is not None:
+                res = res + al(x)
             x = x + res
             states.append(layer_state)
 
@@ -117,8 +119,10 @@ class CausalTransformerShard(hk.Module):
 
         new_states = []
 
-        for l, s in zip(self.transformer_layers, state):
+        for (l, al), s in zip(zip(self.transformer_layers, self.adapter_layers), state):
             res, layer_state = l.decode_once(s, x, attn_bias)
+            if al is not None:
+                res = res + al(x)
             x = x + res
             new_states.append(layer_state)
 

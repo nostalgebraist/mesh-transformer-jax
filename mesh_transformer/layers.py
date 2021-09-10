@@ -396,8 +396,6 @@ class AdapterLayerShard(hk.Module):
 
         return g_psum(dense_out)
 
-    # TODO: decode funcs
-
 
 # This new class combines the input and output projection into one matmul for better efficiency
 class TransformerLayerShardV2(hk.Module):
