@@ -144,10 +144,8 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_ck
     if shards_out is None:
         shards_out = shards_in
 
-    base_params = None
-    if adapter_ckpt:
-        base_params, adapter_params = base_and_adapter_params(pytree['params'])
-        pytree['params'] = adapter_params
+    base_params, adapter_params = base_and_adapter_params(pytree['params'])
+    pytree['params'] = adapter_params if adapter_ckpt else base_params
 
     old_flattened, structure = jax.tree_flatten(pytree)
 
@@ -188,6 +186,8 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, adapter_ck
         loaded_pytree['opt_state'] = original_opt_state
     if adapter_ckpt:
         loaded_pytree['params'] = hk.data_structures.merge(base_params, loaded_pytree['params'])
+    else:
+        loaded_pytree['params'] = hk.data_structures.merge(adapter_params, loaded_pytree['params'])
     return loaded_pytree
 
 
