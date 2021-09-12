@@ -82,7 +82,7 @@ if __name__ == "__main__":
         print(f"using checkpoint {ckpt_step}")
         gptj_ckpt_path = f"gs://{bucket}/{gptj_model_dir}/step_{ckpt_step}/"
     except:
-        # this try/except is for testing -nost
+        # this try/except exists for convenience given the way i have my gcs bucket set up -nost
         print(f"couldn't load meta.json, interpreting {gptj_model_dir} as a direct ckpt path")
         gptj_ckpt_path = gptj_model_dir
 
