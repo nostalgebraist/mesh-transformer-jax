@@ -75,13 +75,16 @@ if __name__ == "__main__":
         gptj_model_dir = args.base_model_path
         adapter_model_dir = model_dir
 
-    with open(f"gs://{bucket}/{gptj_model_dir}/meta.json", "r") as f:
-        meta = json.load(f)
-
-    ckpt_step = meta["checkpoints"][-1]
-    print(f"using checkpoint {ckpt_step}")
-
-    gptj_ckpt_path = f"gs://{bucket}/{gptj_model_dir}/step_{ckpt_step}/"
+    try:
+        with open(f"gs://{bucket}/{gptj_model_dir}/meta.json", "r") as f:
+            meta = json.load(f)
+        ckpt_step = meta["checkpoints"][-1]
+        print(f"using checkpoint {ckpt_step}")
+        gptj_ckpt_path = f"gs://{bucket}/{gptj_model_dir}/step_{ckpt_step}/"
+    except:
+        # this try/except is for testing -nost
+        print(f"couldn't load meta.json, interpreting {gptj_model_dir} as a direct ckpt path")
+        gptj_ckpt_path = gptj_model_dir
 
     if use_adapters:
         with open(f"gs://{bucket}/{adapter_model_dir}/meta.json", "r") as f:
