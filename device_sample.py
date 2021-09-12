@@ -22,6 +22,9 @@ def parse_args():
     parser.add_argument("--config", type=str, default=None, help="Config file location")
     parser.add_argument("--base-model-path", type=str, default=None, help="Base model path if using adapters")
 
+    parser.add_argument("--temp", type=float, default=0.75)
+    parser.add_argument("--top-p", type=float, default=0.9)
+
     args = parser.parse_args()
     return args
 
@@ -127,8 +130,8 @@ if __name__ == "__main__":
             batched_tokens = np.array([padded_tokens] * total_batch)
             length = np.ones(total_batch, dtype=np.uint32) * len(tokens)
 
-            output = network.generate(batched_tokens, length, 512, {"top_p": np.ones(total_batch) * 0.9,
-                                                                    "temp": np.ones(total_batch) * 0.75})
+            output = network.generate(batched_tokens, length, 512, {"top_p": np.ones(total_batch) * args.top_p,
+                                                                    "temp": np.ones(total_batch) * args.temp})
 
             for idx, o in enumerate(output[1][0][:, :, 0]):
                 print(f"sample {idx}: {repr(tokenizer.decode(o))}")
