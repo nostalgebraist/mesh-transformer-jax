@@ -20,6 +20,7 @@ def parse_args():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Config file location")
+    parser.add_argument("--base-model-path", type=str, default=None, help="Base model path if using adapters")
 
     args = parser.parse_args()
     return args
@@ -32,6 +33,10 @@ if __name__ == "__main__":
     gradient_accumulation_steps = params.get("gradient_accumulation_steps", 1)
     per_replica_batch = params["per_replica_batch"]
     cores_per_replica = params["cores_per_replica"]
+    use_adapters = params.get("use_adapters", False)
+
+    if use_adapters and (args.base_model_path is None):
+        raise ValueError(f"If using adapters, you must pass --base-model-paths")
 
     assert cores_per_replica <= 8
 
@@ -63,19 +68,42 @@ if __name__ == "__main__":
     mesh_shape = (jax.device_count() // cores_per_replica, cores_per_replica)
     devices = np.array(jax.devices()).reshape(mesh_shape)
 
-    with open(f"gs://{bucket}/{model_dir}/meta.json", "r") as f:
+    gptj_model_dir = model_dir
+    adapter_model_dir = None
+
+    if use_adapters:
+        gptj_model_dir = args.base_model_path
+        adapter_model_dir = model_dir
+
+    with open(f"gs://{bucket}/{gptj_model_dir}/meta.json", "r") as f:
         meta = json.load(f)
 
     ckpt_step = meta["checkpoints"][-1]
     print(f"using checkpoint {ckpt_step}")
+
+    gptj_ckpt_path = f"gs://{bucket}/{gptj_model_dir}/step_{ckpt_step}/"
+
+    if use_adapters:
+        with open(f"gs://{bucket}/{adapter_model_dir}/meta.json", "r") as f:
+            meta = json.load(f)
+
+        ckpt_step = meta["checkpoints"][-1]
+        print(f"using adapter checkpoint {ckpt_step}")
+
+        adapter_ckpt_path = f"gs://{bucket}/{adapter_model_dir}/step_{ckpt_step}/"
 
     total_batch = per_replica_batch * jax.device_count() // cores_per_replica
     with jax.experimental.maps.mesh(devices, ('dp', 'mp')):
         network = CausalTransformer(params)
 
         start = time.time()
-        network.state = read_ckpt(network.state, f"gs://{bucket}/{model_dir}/step_{ckpt_step}/", devices.shape[1])
+        network.state = read_ckpt(network.state, gptj_ckpt_path, devices.shape[1])
         print(f"network loaded in {time.time() - start:.06}s")
+
+        if use_adapters:
+            start = time.time()
+            network.state = read_ckpt(network.state, adapter_ckpt_path, devices.shape[1], adapter_ckpt=True)
+            print(f"adapters loaded in {time.time() - start:.06}s")
 
         local_shards = max(jax.local_device_count() // mesh_shape[1], 1)
         del network.state["opt_state"]
