@@ -62,8 +62,8 @@ def parse_args():
                                    help="Disables shuffling, so the input and output data have the same order.")
 
     tokenizer_args = parser.add_argument_group('tokenizer')
-    misc_args.add_argument("--tokenizer", default="gpt2")
-    misc_args.add_argument("--sequence_length", default=2048)
+    tokenizer_args.add_argument("--tokenizer", default="gpt2")
+    tokenizer_args.add_argument("--sequence_length", default=2048)
 
     misc_args = parser.add_argument_group('miscellaneous arguments')
     misc_args.add_argument("--verbose",
