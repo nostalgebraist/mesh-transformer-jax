@@ -63,7 +63,7 @@ def parse_args():
 
     tokenizer_args = parser.add_argument_group('tokenizer')
     tokenizer_args.add_argument("--tokenizer", default="gpt2")
-    tokenizer_args.add_argument("--sequence_length", default=2048)
+    tokenizer_args.add_argument("--sequence_length", default=2048, type=int)
 
     misc_args = parser.add_argument_group('miscellaneous arguments')
     misc_args.add_argument("--verbose",
