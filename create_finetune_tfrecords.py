@@ -61,6 +61,10 @@ def parse_args():
                                    default=False, action="store_true",
                                    help="Disables shuffling, so the input and output data have the same order.")
 
+    tokenizer_args = parser.add_argument_group('tokenizer')
+    misc_args.add_argument("--tokenizer", default="gpt2")
+    misc_args.add_argument("--sequence_length", default=2048)
+
     misc_args = parser.add_argument_group('miscellaneous arguments')
     misc_args.add_argument("--verbose",
                            default=False, action="store_true",
@@ -233,7 +237,7 @@ def arrays_to_sequences(token_list_iterable, sequence_length=2049):
 
 
 def chunk_and_finalize(arrays, args, encoder):
-    sequences = list(arrays_to_sequences(arrays))
+    sequences = list(arrays_to_sequences(arrays, sequence_length=args.sequence_length + 1))
 
     full_seqs, trailing_data = sequences[:-1], sequences[-1]
 
@@ -248,7 +252,7 @@ def chunk_and_finalize(arrays, args, encoder):
 
 def create_tfrecords(files, args):
     GPT2TokenizerFast.max_model_input_sizes['gpt2'] = 1e20  # disables a misleading warning
-    encoder = GPT2TokenizerFast.from_pretrained('gpt2')
+    encoder = GPT2TokenizerFast.from_pretrained(args.tokenizer)
 
     random.seed(args.seed)
 
