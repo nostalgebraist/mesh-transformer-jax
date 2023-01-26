@@ -61,6 +61,7 @@ def parse_args():
     parser.add_argument("--temp", type=float, default=0.95)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--save-token-val-loss", action="store_true")
+    parser.add_argument("--eot-mask", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -122,13 +123,34 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
         json.dump(meta, f)
 
 
-def train_step(network, data):
+def make_eot_mask(data):
+    print("debug: making eot mask")
+    seq_len = data.shape[-1]
+
+    is_eot = data == 50256
+    cs = is_eot.cumsum(axis=2)
+
+    premask = np.tile(cs[:, :, :, None], (1,1,1,seq_len))
+    mask = premask == cs
+
+    bias = -1e10 * (1. - mask)
+    print("debug: bias")
+    print(repr(bias))
+    return bias
+
+
+def train_step(network, data, eot_mask=False):
     inputs = {
         "obs": data[:, :, :-1],
         "target": data[:, :, 1:],
     }
 
-    loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs)
+    attn_bias = 0.
+
+    if eot_mask:
+        attn_bias = make_eot_mask(data[:, :, :-1])
+
+    loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs, attn_bias=attn_bias)
 
     return (
         np.array(loss).mean(),
@@ -138,7 +160,9 @@ def train_step(network, data):
     )
 
 
-def eval_step(network, data, return_token_loss=False):
+def eval_step(network, data, return_token_loss=False, eot_mask=False):
+    if eot_mask:
+        raise ValueError('todo')
     inputs = {
         "obs": data[:, :-1],
         "target": data[:, 1:],
@@ -327,6 +351,7 @@ if __name__ == "__main__":
         start = time.time()
         loss, last_loss, grad_norm, grad_norm_micro = train_step(
             network, train_dataset.get_samples()
+            eot_mask=args.eot_mask,
         )
         print(("loss", loss))
         print(("last_loss", last_loss))
@@ -339,7 +364,7 @@ if __name__ == "__main__":
         print("compiling eval fn")
         start = time.time()
         for val_set in val_sets.values():
-            eval_step(network, val_set.get_samples(), return_token_loss=args.save_token_val_loss)
+            eval_step(network, val_set.get_samples(), return_token_loss=args.save_token_val_loss, eot_mask=args.eot_mask,)
             val_set.reset()
         print(f"Eval fn compiled in {time.time() - start:.06}s")
 
@@ -404,12 +429,12 @@ if __name__ == "__main__":
                         total=val_batches,
                     ):
                         if args.save_token_val_loss:
-                            batch_loss, per_token_loss = eval_step(network, i, return_token_loss=True)
+                            batch_loss, per_token_loss = eval_step(network, i, return_token_loss=True, eot_mask=args.eot_mask,)
                             val_loss.append(batch_loss)
                             per_token_losses.append(per_token_loss)
                             per_token_loss_contexts.append(i)
                         else:
-                            val_loss.append(eval_step(network, i))
+                            val_loss.append(eval_step(network, i, eot_mask=args.eot_mask,))
                     val_set.reset()
 
                     val_loss = np.array(val_loss).mean()
@@ -457,7 +482,8 @@ if __name__ == "__main__":
 
             start = time.time()
             loss, last_loss, grad_norm, grad_norm_micro = train_step(
-                network, train_dataset.get_samples()
+                network, train_dataset.get_samples(),
+                eot_mask=args.eot_mask,
             )
             step += 1
 

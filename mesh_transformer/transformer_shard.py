@@ -125,10 +125,10 @@ class CausalTransformer:
 
             return eval_loss_fn(to_bf16(state["params"]), ctx, tgt, mask)
 
-        def train(state, ctx, tgt):
-            def train_loss(x, y):
+        def train(state, ctx, tgt, attn_bias):
+            def train_loss(x, y, attn_bias):
                 transformer = CausalTransformerShard(config)
-                out = transformer.loss(x, y, z_loss=True)
+                out = transformer.loss(x, y, mask=attn_bias, z_loss=True)
 
                 return out["loss"], out["last_loss"]
 
@@ -146,7 +146,7 @@ class CausalTransformer:
 
             if ctx.shape[0] == 1:
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0])
+                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0], attn_bias[0])
                 gnorm = global_norm(grad)
             else:
                 grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
@@ -267,7 +267,7 @@ class CausalTransformer:
         self.gen_length = 1
         self.state = self.init_xmap(jnp.array(key.take(mp_per_host)), x)
 
-    def train(self, sample):
+    def train(self, sample, attn_bias=0.):
         # print("train iter")
         # print("sample", sample["obs"])
         # print("target", sample["target"])
@@ -280,7 +280,7 @@ class CausalTransformer:
         # assert (sample["obs"][:, 1:] == sample["target"][:, -1])
 
         # start = time.time()
-        loss, last_loss, grad_norm, grad_norm_micro, self.state = self.train_xmap(self.state, obs, target)
+        loss, last_loss, grad_norm, grad_norm_micro, self.state = self.train_xmap(self.state, obs, target, attn_bias=attn_bias)
         loss = np.array(loss)
         last_loss = np.array(last_loss)
         grad_norm = np.array(grad_norm)
