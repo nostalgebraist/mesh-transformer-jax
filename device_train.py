@@ -126,17 +126,18 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
 def make_eot_mask(data, bs=4):
     print("debug: making eot mask")
     segs = []
+    # batch1, batch2, seq_len = data.shape
+    # data = data.reshape((-1, seq_len))
     for i in range(0, len(data), bs):
-        seq_len = data.shape[-1]
-
         is_eot = data[i:i+bs] == 50256
         cs = is_eot.cumsum(axis=2)
 
         premask = np.tile(cs[:, :, :, None], (1,1,1,seq_len))
-        mask = premask == cs
+        mask = premask == cs[:, :, None, :]
         segs.append(-1e10 * (1. - mask))
 
     bias = np.concatenate(segs)
+    # bias = bias.reshape((batch1, batch2, seq_len))
     print(f"debug: done eot mask shape {bias.shape}")
     return bias
 
