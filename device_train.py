@@ -148,12 +148,12 @@ def train_step(network, data, eot_mask=False):
         "target": data[:, :, 1:],
     }
 
-    attn_bias = 0.
-
     if eot_mask:
         attn_bias = make_eot_mask(data[:, :, :-1])
 
-    loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs, attn_bias=attn_bias)
+        inputs["attn_bias"] = attn_bias
+
+    loss, last_loss, grad_norm, grad_norm_micro = network.train(inputs)
 
     return (
         np.array(loss).mean(),

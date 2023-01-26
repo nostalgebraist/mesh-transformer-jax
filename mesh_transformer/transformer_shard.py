@@ -268,12 +268,16 @@ class CausalTransformer:
         self.gen_length = 1
         self.state = self.init_xmap(jnp.array(key.take(mp_per_host)), x)
 
-    def train(self, sample, attn_bias=0.):
+    def train(self, sample):
         # print("train iter")
         # print("sample", sample["obs"])
         # print("target", sample["target"])
         obs = jnp.transpose(sample["obs"], (1, 0, 2))
         target = jnp.transpose(sample["target"], (1, 0, 2))
+        if 'attn_bias' in sample:
+            attn_bias = jnp.transpose(sample["attn_bias"], (1, 0, 2))
+        else:
+            attn_bias = 0.
 
         # print("train sample", obs.shape)
         # print("train target", target.shape)
