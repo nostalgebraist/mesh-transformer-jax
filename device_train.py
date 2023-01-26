@@ -137,7 +137,7 @@ def make_eot_mask(data, bs=4):
         segs.append(-1e10 * (1. - mask))
 
     bias = np.concatenate(segs)
-    print("debug: done eot mask")
+    print(f"debug: done eot mask shape {bias.shape}")
     return bias
 
 
