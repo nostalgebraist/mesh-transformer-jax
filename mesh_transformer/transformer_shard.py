@@ -12,6 +12,33 @@ from mesh_transformer.layers import EmbeddingShard, TransformerLayerShard, Relat
 from mesh_transformer.util import to_f32, to_bf16, shard_axis, unshard_axis, global_norm
 
 
+def eot_mask(tokens):
+    def row_mask(carry, i):
+        data = carry
+
+        row_mask = data == data[i]
+
+        return data, row_mask
+
+    def elem_mask_bias(row):
+        _, mask = jax.lax.scan(row_mask, row, jnp.arange(row.shape[-1]))
+        mask = mask.transpose((1,0))
+        bias = -1e10 * (1. - mask)
+        return bias
+
+    is_eot = tokens == 50256
+    cs = is_eot.cumsum(axis=2)
+
+    batch1, batch2, seq = cs.shape
+    cs = cs.reshape((batch1 * batch2, seq))
+
+    bias = jax.vmap(elem_mask_bias)(cs)
+
+    bias = bias.reshape((batch1, batch2, seq, seq))
+
+    return bias
+
+
 class CausalTransformerShard(hk.Module):
     def __init__(self, config):
         super().__init__()
@@ -37,6 +64,8 @@ class CausalTransformerShard(hk.Module):
             self.rpe = RelativePositionEmbs()
         else:
             self.rpe = None
+
+        self.eot_mask = config.get('eot_mask', False)
 
     def eval(self, context, target, z_loss=0., mask=0.0):
         input_len = context.shape[0]
@@ -117,6 +146,10 @@ class CausalTransformer:
         def eval(state, ctx, tgt, ctx_length):
             def eval_loss(x, y, mask):
                 transformer = CausalTransformerShard(config)
+                if transformer.eot_mask:
+                    eot_bias = eot_mask(x)
+                    mask = eot_bias * mask
+
                 return transformer.loss(x, y, mask=mask)
 
             eval_loss_fn = hk.without_apply_rng(hk.transform(eval_loss)).apply
@@ -125,20 +158,27 @@ class CausalTransformer:
 
             return eval_loss_fn(to_bf16(state["params"]), ctx, tgt, mask)
 
-        def train(state, ctx, tgt, attn_bias):
-            def train_loss(x, y, attn_bias):
+        def train(state, ctx, tgt):
+            def train_loss(x, y):
                 transformer = CausalTransformerShard(config)
-                out = transformer.loss(x, y, mask=attn_bias, z_loss=True)
+
+                if transformer.eot_mask:
+                    eot_bias = eot_mask(x)
+                    mask = eot_bias * mask
+                else:
+                    mask = 0.0
+
+                out = transformer.loss(x, y, mask=mask, z_loss=True)
 
                 return out["loss"], out["last_loss"]
 
             train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
             def microbatch(old_grad, batch):
-                ctx, tgt, attn_bias = batch
+                ctx, tgt = batch
 
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt, attn_bias)
+                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt)
 
                 new_grad = jax.tree_multimap(lambda a, b: a + b, old_grad, grad)
                 gnorm = global_norm(grad)
@@ -146,13 +186,13 @@ class CausalTransformer:
 
             if ctx.shape[0] == 1:
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0], attn_bias[0])
+                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx[0], tgt[0])
                 gnorm = global_norm(grad)
             else:
                 grad, (loss, last_loss, gnorm) = jax.lax.scan(microbatch,
                                                        jax.tree_map(lambda x: jnp.zeros_like(x).astype(jnp.bfloat16),
                                                                     state["params"]),
-                                                       (ctx, tgt, attn_bias))
+                                                       (ctx, tgt))
 
             grad_norm_micro = jax.lax.pmean(gnorm, "batch")
 
@@ -222,7 +262,6 @@ class CausalTransformer:
 
         self.train_xmap = jax.experimental.maps.xmap(fun=train,
                                                      in_axes=(["shard", ...],
-                                                              ["batch", ...],
                                                               ["batch", ...],
                                                               ["batch", ...]),
                                                      out_axes=(["batch", ...], ["batch", ...], ["batch", ...], ["batch", ...], ["shard", ...]),
