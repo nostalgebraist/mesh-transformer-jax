@@ -135,10 +135,10 @@ class CausalTransformer:
             train_loss_fn = hk.without_apply_rng(hk.transform(train_loss)).apply
 
             def microbatch(old_grad, batch):
-                ctx, tgt = batch
+                ctx, tgt, attn_bias = batch
 
                 val_grad_fn = jax.value_and_grad(train_loss_fn, has_aux=True)
-                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt)
+                (loss, last_loss), grad = val_grad_fn(to_bf16(state["params"]), ctx, tgt, attn_bias)
 
                 new_grad = jax.tree_multimap(lambda a, b: a + b, old_grad, grad)
                 gnorm = global_norm(grad)
