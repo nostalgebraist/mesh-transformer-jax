@@ -123,19 +123,21 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
         json.dump(meta, f)
 
 
-def make_eot_mask(data):
+def make_eot_mask(data, bs=4):
     print("debug: making eot mask")
-    seq_len = data.shape[-1]
+    segs = []
+    for i in range(0, len(data), bs):
+        seq_len = data.shape[-1]
 
-    is_eot = data == 50256
-    cs = is_eot.cumsum(axis=2)
+        is_eot = data[i:i+bs] == 50256
+        cs = is_eot.cumsum(axis=2)
 
-    premask = np.tile(cs[:, :, :, None], (1,1,1,seq_len))
-    mask = premask == cs
+        premask = np.tile(cs[:, :, :, None], (1,1,1,seq_len))
+        mask = premask == cs
+        segs.append(-1e10 * (1. - mask))
 
-    bias = -1e10 * (1. - mask)
-    print("debug: bias")
-    print(repr(bias))
+    bias = np.concatenate(segs)
+    print("debug: done eot mask")
     return bias
 
 
