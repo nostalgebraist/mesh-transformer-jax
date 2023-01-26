@@ -126,7 +126,7 @@ def save(network, step, bucket, path, mp, aux=None, keep_n=3, delete_old=True):
 def make_eot_mask(data, bs=4):
     print("debug: making eot mask")
     segs = []
-    # batch1, batch2, seq_len = data.shape
+    batch1, batch2, seq_len = data.shape
     # data = data.reshape((-1, seq_len))
     for i in range(0, len(data), bs):
         is_eot = data[i:i+bs] == 50256
