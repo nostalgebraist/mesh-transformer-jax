@@ -313,10 +313,10 @@ class CausalTransformer:
         # print("target", sample["target"])
         obs = jnp.transpose(sample["obs"], (1, 0, 2))
         target = jnp.transpose(sample["target"], (1, 0, 2))
-        if 'attn_bias' in sample:
-            attn_bias = jnp.transpose(sample["attn_bias"], (1, 0, 2, 3))
-        else:
-            attn_bias = jnp.zeros((obs.shape[0],))
+        # if 'attn_bias' in sample:
+        #     attn_bias = jnp.transpose(sample["attn_bias"], (1, 0, 2, 3))
+        # else:
+        #     attn_bias = jnp.zeros((obs.shape[0],))
 
         # print("train sample", obs.shape)
         # print("train target", target.shape)
@@ -324,7 +324,7 @@ class CausalTransformer:
         # assert (sample["obs"][:, 1:] == sample["target"][:, -1])
 
         # start = time.time()
-        loss, last_loss, grad_norm, grad_norm_micro, self.state = self.train_xmap(self.state, obs, target, attn_bias)
+        loss, last_loss, grad_norm, grad_norm_micro, self.state = self.train_xmap(self.state, obs, target)
         loss = np.array(loss)
         last_loss = np.array(last_loss)
         grad_norm = np.array(grad_norm)
