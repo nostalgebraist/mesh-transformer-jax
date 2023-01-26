@@ -223,6 +223,7 @@ class CausalTransformer:
         self.train_xmap = jax.experimental.maps.xmap(fun=train,
                                                      in_axes=(["shard", ...],
                                                               ["batch", ...],
+                                                              ["batch", ...],
                                                               ["batch", ...]),
                                                      out_axes=(["batch", ...], ["batch", ...], ["batch", ...], ["batch", ...], ["shard", ...]),
                                                      donate_argnums=(0,),
