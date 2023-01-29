@@ -167,11 +167,12 @@ def eot_splitting_generator(string_iterable, encoder):
                 yield d
 
 
-def prep_and_tokenize_generator(string_iterable, encoder, normalize_with_ftfy, normalize_with_wikitext_detokenize):
+def prep_and_tokenize_generator(string_iterable, encoder, normalize_with_ftfy, normalize_with_wikitext_detokenize, use_tqdm=False):
     """
     Given strings, does data cleaning / tokenization and yields arrays of tokens
     """
-    for doc in tqdm(string_iterable, mininterval=1, smoothing=0):
+    pbar = tqdm(string_iterable, mininterval=1, smoothing=0) if use_tqdm else string_iterable
+    for doc in pbar:
         if normalize_with_ftfy:  # fix text with ftfy if specified
             doc = ftfy.fix_text(doc, normalization='NFKC')
         if normalize_with_wikitext_detokenize:
@@ -180,7 +181,7 @@ def prep_and_tokenize_generator(string_iterable, encoder, normalize_with_ftfy, n
         yield tokens
 
 
-def file_to_tokenized_docs_generator(file_path, encoder, args):
+def file_to_tokenized_docs_generator(file_path, encoder, args, use_tqdm=False):
     """
     Given a file path, reads the file and tokenizes the contents
 
@@ -193,7 +194,8 @@ def file_to_tokenized_docs_generator(file_path, encoder, args):
     token_list_gen = prep_and_tokenize_generator(string_iterable,
                                                  encoder,
                                                  normalize_with_ftfy=args.normalize_with_ftfy,
-                                                 normalize_with_wikitext_detokenize=args.normalize_with_wikitext_detokenize
+                                                 normalize_with_wikitext_detokenize=args.normalize_with_wikitext_detokenize,
+                                                 use_tqdm=use_tqdm,
                                                  )
     return token_list_gen
 
@@ -206,8 +208,11 @@ def read_files_to_tokenized_docs(files, args, encoder):
     else:
         random.shuffle(files)
 
-    for f in tqdm(files, mininterval=10, smoothing=0):
-        docs.extend(file_to_tokenized_docs_generator(f, encoder, args))
+    multiple_files = len(files) > =1
+    pbar = tqdm(files, mininterval=10, smoothing=0) if multiple_files else files
+
+    for f in pbar:
+        docs.extend(file_to_tokenized_docs_generator(f, encoder, args, use_tqdm=not multiple_files))
 
     if not (args.preserve_data_order or args.preserve_doc_order):
         # shuffle at individual document level
