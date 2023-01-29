@@ -171,7 +171,7 @@ def prep_and_tokenize_generator(string_iterable, encoder, normalize_with_ftfy, n
     """
     Given strings, does data cleaning / tokenization and yields arrays of tokens
     """
-    for doc in string_iterable:
+    for doc in tqdm(string_iterable, mininterval=1, smoothing=0):
         if normalize_with_ftfy:  # fix text with ftfy if specified
             doc = ftfy.fix_text(doc, normalization='NFKC')
         if normalize_with_wikitext_detokenize:
