@@ -208,7 +208,7 @@ def read_files_to_tokenized_docs(files, args, encoder):
     else:
         random.shuffle(files)
 
-    multiple_files = len(files) >= 1
+    multiple_files = len(files) > 1
     pbar = tqdm(files, mininterval=10, smoothing=0) if multiple_files else files
 
     for f in pbar:
