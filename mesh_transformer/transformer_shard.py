@@ -27,14 +27,11 @@ def eot_mask(tokens):
         return bias
 
     is_eot = tokens == 50256
-    cs = is_eot.cumsum(axis=2)
+    print(is_eot.shape)
+    cs = is_eot.cumsum()
+    print(cs.shape)
 
-    batch1, batch2, seq = cs.shape
-    cs = cs.reshape((batch1 * batch2, seq))
-
-    bias = jax.vmap(elem_mask_bias)(cs)
-
-    bias = bias.reshape((batch1, batch2, seq, seq))
+    bias = elem_mask_bias(cs)
 
     return bias
 
