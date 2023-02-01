@@ -344,6 +344,8 @@ class CausalTransformer:
         # start = time.time()
 
         if "ctx_length" in sample:
+            if self.config.get('eot_mask', False):
+                raise ValueError('not implemented with eot mask')
             ctx_length = sample["ctx_length"]
         else:
             ctx_length = np.array([len(sample["obs"][0])] * len(sample["obs"]))
