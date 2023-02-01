@@ -56,6 +56,12 @@ def parse_args():
         action="store_true",
         help="Use a newly initialized optimizer, ignoring any optimizer state saved in the base checkpoint",
     )
+    parser.add_argument(
+        "--fresh-opt-mu",
+        default=False,
+        action="store_true",
+        help="Don't load the momentum buffer from the checkpoint, only the squared gradients",
+    )
     parser.add_argument("--sample-every", type=int, default=0)
     parser.add_argument("--sample-length", type=int, default=2000)
     parser.add_argument("--temp", type=float, default=0.95)
@@ -314,6 +320,7 @@ if __name__ == "__main__":
                 initial_ckpt_state_path,
                 devices.shape[1],
                 load_opt=(not args.fresh_opt),
+                load_opt_mu=(not args.fresh_opt_mu)
             )
 
             if fine_tuning:

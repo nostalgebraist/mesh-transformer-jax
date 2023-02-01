@@ -118,7 +118,7 @@ def reshard(x, old_shape):
     return out
 
 
-def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
+def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True, load_opt_mu=True):
     if shards_out is None:
         shards_out = shards_in
 
@@ -159,4 +159,6 @@ def read_ckpt(pytree, dir, shards_in, shards_out=None, load_opt=True):
 
     if not load_opt:
         loaded_pytree['opt_state'] = original_opt_state
+    elif not load_opt_mu:
+        loaded_pytree['opt_state'][2] = loaded_pytree['opt_state'][2]._replace(mu=original_opt_state[2].mu)
     return loaded_pytree
