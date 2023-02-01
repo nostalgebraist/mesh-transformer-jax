@@ -148,7 +148,8 @@ class CausalTransformer:
                 transformer = CausalTransformerShard(config)
                 if transformer.eot_mask:
                     eot_bias = eot_mask(x)
-                    mask = eot_bias * mask
+                    mask = eot_bias
+                    # mask = eot_bias * mask
 
                 return transformer.loss(x, y, mask=mask)
 
