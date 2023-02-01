@@ -27,11 +27,19 @@ def eot_mask(tokens):
         return bias
 
     is_eot = tokens == 50256
-    print(is_eot.shape)
+    print("eot_mask is_eot")
+    print(repr(is_eot))
+    print(f"shape {is_eot.shape}")
+
     cs = is_eot.cumsum()
-    print(cs.shape)
+    print("eot_mask cs")
+    print(repr(cs))
+    print(f"shape {cs.shape}")
 
     bias = elem_mask_bias(cs)
+    print("eot_mask bias")
+    print(repr(bias))
+    print(f"shape {bias.shape}")
 
     return bias
 

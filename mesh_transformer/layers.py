@@ -266,7 +266,20 @@ class TransformerLayerShard(hk.Module):
         seq_len = x.shape[0]
         causal_mask = np.tril(np.ones((seq_len, seq_len)))
         bias = -1e10 * (1. - causal_mask)
+        
+        print("attn causal bias")
+        print(repr(bias))
+        print(f"shape {bias.shape}")
+
+        print("attn attn_bias")
+        print(repr(attn_bias))
+        print(f"shape {attn_bias.shape}")
+
         bias += attn_bias
+
+        print("attn bias")
+        print(repr(bias))
+        print(f"shape {bias.shape}")
 
         attn_out = self.self_attn(q, v, k, bias)
         dense_out = self.ff(x)
