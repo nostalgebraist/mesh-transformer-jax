@@ -164,7 +164,7 @@ class CausalTransformer:
 
                 if transformer.eot_mask:
                     eot_bias = eot_mask(x)
-                    mask = eot_bias * mask
+                    mask = eot_bias
                 else:
                     mask = 0.0
 
