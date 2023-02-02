@@ -345,11 +345,11 @@ class CausalTransformer:
         # start = time.time()
 
         if "ctx_length" in sample:
+            ctx_length = sample["ctx_length"]
             if self.config.get('eot_mask', False):
                 if not self.print_guard:
                     print(f'got ctx_length {ctx_length}, will be overridden with eot mask')
                     self.print_guard = True
-            ctx_length = sample["ctx_length"]
         else:
             ctx_length = np.array([len(sample["obs"][0])] * len(sample["obs"]))
 
