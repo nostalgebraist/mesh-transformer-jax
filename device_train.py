@@ -3,6 +3,7 @@ import json
 import time
 import multiprocessing
 import os
+import pathlib
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import jax
@@ -67,6 +68,7 @@ def parse_args():
     parser.add_argument("--temp", type=float, default=0.95)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--save-token-val-loss", action="store_true")
+    parser.add_argument("--autostrings", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -166,6 +168,7 @@ if __name__ == "__main__":
 
     args = parse_args()
     params = json.load(open(args.config))
+    config_name = pathlib.Path(args.config).stem
 
     gradient_accumulation_steps = params.get("gradient_accumulation_steps", 1)
     per_replica_batch = params["per_replica_batch"]
@@ -175,6 +178,22 @@ if __name__ == "__main__":
 
     bucket = params["bucket"]
     model_dir = params["model_dir"]
+    wandb_name = params["name"]
+
+    if args.autostrings:
+        auto_model_dir = str(pathlib.Path(model_dir).parent.joinpath(config_name))
+        print(f"constructed model_dir {repr(auto_model_dir)} from {repr(config_name)}")
+        print(f"provided value {repr(model_dir)} will not be used")
+        model_dir = auto_model_dir
+
+        auto_wandb_name = config_name
+        print(f"constructed wandb_name {repr(auto_wandb_name)} from {repr(config_name)}")
+        print(f"provided value {repr(wandb_name)} will not be used")
+        wandb_name = auto_wandb_name
+
+        params["model_dir"] = model_dir
+        params["name"] = wandb_name
+
     layers = params["layers"]
     d_model = params["d_model"]
     n_heads = params["n_heads"]
@@ -350,7 +369,7 @@ if __name__ == "__main__":
             val_set.reset()
         print(f"Eval fn compiled in {time.time() - start:.06}s")
 
-        wandb.init(project="mesh-transformer-jax", name=params["name"], config=params)
+        wandb.init(project="mesh-transformer-jax", name=wandb_name, config=params)
 
         eval_task_dict = tasks.get_task_dict(eval_tasks)
 
