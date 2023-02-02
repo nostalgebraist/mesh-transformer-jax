@@ -20,6 +20,7 @@ def parse_args():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Config file location")
+    parser.add_argument("--autostrings", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -28,6 +29,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     params = json.load(open(args.config))
+    config_name = pathlib.Path(args.config).stem
 
     gradient_accumulation_steps = params.get("gradient_accumulation_steps", 1)
     per_replica_batch = params["per_replica_batch"]
@@ -37,6 +39,12 @@ if __name__ == "__main__":
 
     bucket = params["bucket"]
     model_dir = params["model_dir"]
+    if args.autostrings:
+        auto_model_dir = str(pathlib.Path(model_dir).parent.joinpath(config_name))
+        print(f"constructed model_dir {repr(auto_model_dir)} from {repr(config_name)}")
+        print(f"provided value {repr(model_dir)} will not be used")
+        model_dir = auto_model_dir
+
     layers = params["layers"]
     d_model = params["d_model"]
     n_heads = params["n_heads"]
