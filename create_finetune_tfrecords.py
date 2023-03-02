@@ -162,7 +162,7 @@ def eot_splitting_generator(string_iterable, encoder):
     Given strings, splits them internally on <|endoftext|> and yields (generally more) strings
     """
     for doc in string_iterable:
-        for d in doc.split(encoder.eos_token):
+        for d in doc.split("<|endoftext|>"):
             if len(d) > 0:
                 yield d
 
@@ -177,7 +177,10 @@ def prep_and_tokenize_generator(string_iterable, encoder, normalize_with_ftfy, n
             doc = ftfy.fix_text(doc, normalization='NFKC')
         if normalize_with_wikitext_detokenize:
             doc = wikitext_detokenizer(doc)
-        tokens = encoder.encode(doc) + [encoder.eos_token_id]
+        if encoder.is_llama:
+            tokens = encoder.encode(doc, bos=False, eos=True)
+        else:
+            tokens = encoder.encode(doc) + [encoder.eos_token_id]
         yield tokens
 
 
@@ -257,7 +260,13 @@ def chunk_and_finalize(arrays, args, encoder):
 
 def create_tfrecords(files, args):
     GPT2TokenizerFast.max_model_input_sizes['gpt2'] = 1e20  # disables a misleading warning
-    encoder = GPT2TokenizerFast.from_pretrained(args.tokenizer)
+    if args.tokenizer = 'llama':
+        import llama.tokenizer
+        encoder = llama.tokenizer.Tokenizer('LLaMA/tokenizer.model')
+        encoder.is_llama = True
+    else:
+        encoder = GPT2TokenizerFast.from_pretrained(args.tokenizer)
+        encoder.is_llama = False
 
     random.seed(args.seed)
 
